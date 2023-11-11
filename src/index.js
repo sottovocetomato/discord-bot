@@ -1,6 +1,7 @@
 require("dotenv").config();
+const ev = require("./handlers/eventHandler");
 const path = require("path");
-const getAllFiles = require("./utils/getAllFiles");
+
 // require("./register-commands");
 const { Client, IntentsBitField } = require("discord.js");
 
@@ -37,5 +38,5 @@ const client = new Client({
 //     interaction.reply(`Сумма: ${num1 + num2}`);
 //   }
 // });
-getAllFiles(path.join(__dirname, "./commands"));
+ev();
 client.login(process.env.TOKEN);

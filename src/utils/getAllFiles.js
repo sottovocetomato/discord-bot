@@ -24,6 +24,6 @@ function registerFiles(directory, foldersOnly = false, fileNames = []) {
 module.exports = (directory, foldersOnly = false) => {
   let fileNames = [];
   registerFiles(directory, foldersOnly, fileNames);
-  console.log(fileNames);
+  // console.log(fileNames);
   return fileNames;
 };
