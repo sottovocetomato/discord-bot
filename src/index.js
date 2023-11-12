@@ -1,5 +1,5 @@
 require("dotenv").config();
-const ev = require("./handlers/eventHandler");
+const eventHandler = require("./handlers/eventHandler");
 const path = require("path");
 
 // require("./register-commands");
@@ -38,5 +38,5 @@ const client = new Client({
 //     interaction.reply(`Сумма: ${num1 + num2}`);
 //   }
 // });
-ev();
+eventHandler(client);
 client.login(process.env.TOKEN);
