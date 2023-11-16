@@ -22,7 +22,11 @@ const actions = {
     const file = fs.readFileSync(
       path.join(__dirname, "..", "prompts/prompts.txt")
     );
-    state.gameQuestions = file.toString().split(",\n");
+    console.log(file.toString(), "file before");
+    state.gameQuestions = file
+      .toString()
+      .split("\n")
+      .map((e) => e.replace("/[,|;]?[\r]?/gi", ""));
     console.log(state.gameQuestions, "file");
   },
 
