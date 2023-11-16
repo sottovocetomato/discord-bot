@@ -11,7 +11,8 @@ module.exports = async (client) => {
       testServer
     );
     for (const localCommand of localCommands) {
-      const { name, description, options } = localCommand;
+      const { name, description, options = [] } = localCommand;
+      console.log(options, description, "localcom");
       const existingCommand = await applicationCommands.cache.find(
         (cmd) => cmd.name === name
       );
@@ -28,6 +29,7 @@ module.exports = async (client) => {
         await applicationCommands.delete(existingCommand.id);
         console.log(`Deleted command ${name}`);
       }
+
       if (areCommandsDifferent(existingCommand, localCommand)) {
         await applicationCommands.edit(existingCommand.id, {
           description,
