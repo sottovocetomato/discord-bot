@@ -3,7 +3,7 @@ const {
   PermissionFlagsBits,
 } = require("discord.js");
 
-const { state, actions } = require("../../storage/qlGame");
+const { state, actions } = require("../../handlers/qlGameHandler");
 
 module.exports = {
   name: "ql_join",

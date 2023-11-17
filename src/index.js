@@ -3,7 +3,7 @@ const eventHandler = require("./handlers/eventHandler");
 const path = require("path");
 
 // require("./register-commands");
-const { Client, IntentsBitField } = require("discord.js");
+const { Client, IntentsBitField, Partials } = require("discord.js");
 
 const client = new Client({
   intents: [
@@ -11,8 +11,9 @@ const client = new Client({
     IntentsBitField.Flags.GuildMembers,
     IntentsBitField.Flags.GuildMessages,
     IntentsBitField.Flags.MessageContent,
-    ,
+    IntentsBitField.Flags.DirectMessages,
   ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
 // client.on("messageCreate", (message) => {
@@ -22,6 +23,7 @@ const client = new Client({
 //   }
 //   message.reply(`Привет, тебе ${message.author.globalName}`);
 // });
+
 //
 // client.on("interactionCreate", (interaction) => {
 //   if (!interaction.isChatInputCommand()) return;

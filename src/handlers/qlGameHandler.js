@@ -1,8 +1,12 @@
 const fs = require("fs");
 const path = require("path");
+const { shuffleArray } = require("../utils/helpers");
 
 const state = {
   currentGameId: null,
+  currentChannel: null,
+  currentRound: 1,
+  questionsPerRound: 5,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
@@ -22,15 +26,16 @@ const actions = {
     const file = fs.readFileSync(
       path.join(__dirname, "..", "prompts/prompts.txt")
     );
-    console.log(file.toString(), "file before");
-    state.gameQuestions = file
-      .toString()
-      .split("\n")
-      .map((e) => e.replace("/[,|;]?[\r]?/gi", ""));
-    console.log(state.gameQuestions, "file");
+
+    state.gameQuestions = file.toString().split("\n");
+
+    shuffleArray(state.gameQuestions);
+    state.gameQuestions = state.gameQuestions
+      .map((e, i) => ({ id: i, question: e.replace(/(,|;|\r)+$/gim, "") }))
+      .filter((e) => !!e);
   },
 
-  startGame(client, interaction) {
+  createGame(client, interaction) {
     if (state.gameIsRunning) {
       const message =
         state.gameParticipants?.length <= 8
@@ -42,15 +47,29 @@ const actions = {
     this.setCurrentGameId();
     state.gameIsRunning = true;
     this.readQuestions();
-    const channel = client.channels.cache.get(interaction.channelId);
+    state.currentChannel = client.channels.cache.get(interaction.channelId);
     const timeout = setTimeout(() => {
       if (!state.gameParticipants.length) {
         state.gameIsRunning = false;
-        channel.send("Игра закончена, так как не было участников!");
+        state.currentChannel.send(
+          "Игра закончена, так как не было участников!"
+        );
+      } else {
+        this.startGame(client, interaction);
       }
       clearTimeout(timeout);
     }, state.waitTimeout);
   },
+
+  startGame(client, interaction) {
+    state.currentQuestion = state.gameQuestions[state.currentRound - 1];
+    state.currentChannel.send(
+      `РАУНД ${state.currentRound}
+      \nВопрос: ${state.currentQuestion?.question} 
+      \nУчастники, присылайте ответы мне в личные сообщения!`
+    );
+  },
+
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e === userId);
   },
@@ -79,6 +98,20 @@ const actions = {
       return;
     }
     state.gameAudience.push(user.id);
+  },
+
+  setParticipantsAnswer(client, message) {
+    const userIsParticipating = this.checkGameParticipant(message.author.id);
+    if (!userIsParticipating) return;
+    state.gameAnswers = {
+      questionId: state.currentQuestion.id,
+      userId: message.author.id,
+      userName: message.author.globalName,
+      answer: message.content,
+    };
+    //TODO если ответов на вопрос 8, заканчиваем этап опроса
+    message.reply(`Ваш ответ принят ${message.author.globalName}`);
+    console.log(state.gameAnswers, "state.gameAnswers");
   },
 };
 
