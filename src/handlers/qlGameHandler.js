@@ -7,14 +7,18 @@ const state = {
   currentChannel: null,
   currentRound: 1,
   questionsPerRound: 5,
+  rounds: 3,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
   gameScore: [],
-  gameAnswers: [],
+  gameAnswers: {},
   gameQuestions: [],
   currentQuestion: {},
-  waitTimeout: 10000,
+  waitTime: 10000,
+  startGameTimeout: null,
+  roundTimeout: 25000,
+  emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
 const actions = {
@@ -48,26 +52,89 @@ const actions = {
     state.gameIsRunning = true;
     this.readQuestions();
     state.currentChannel = client.channels.cache.get(interaction.channelId);
-    const timeout = setTimeout(() => {
-      if (!state.gameParticipants.length) {
+    state.startGameTimeout = setTimeout(() => {
+      if (state.gameParticipants.length < 1) {
         state.gameIsRunning = false;
         state.currentChannel.send(
-          "Игра закончена, так как не было участников!"
+          "Недостаточное количество участников для начала игры :("
         );
       } else {
-        this.startGame(client, interaction);
+        this.handleGame(client, interaction);
       }
-      clearTimeout(timeout);
-    }, state.waitTimeout);
+      clearTimeout(state.startGameTimeout);
+    }, state.waitTime);
   },
 
-  startGame(client, interaction) {
+  async handleGame(client, interaction) {
+    if (!state.gameIsRunning) {
+      await interaction.reply("Cначала создайте игру :)");
+      return;
+    }
+    if (state.gameParticipants.length < 1) {
+      interaction.reply(
+        "Недостаточное количество участников для начала игры :("
+      );
+      return;
+    }
+    this.startRound();
+  },
+
+  startRound() {
     state.currentQuestion = state.gameQuestions[state.currentRound - 1];
     state.currentChannel.send(
       `РАУНД ${state.currentRound}
       \nВопрос: ${state.currentQuestion?.question} 
       \nУчастники, присылайте ответы мне в личные сообщения!`
     );
+    let interval;
+    let timeout = state.roundTimeout;
+    interval = setInterval(() => {
+      if (timeout > 0) {
+        if (
+          state?.gameAnswers[state.currentRound]?.length ===
+          state?.gameParticipants?.length
+        ) {
+          this.roundVote();
+          clearInterval(interval);
+          return;
+        }
+        if (timeout === 15000) {
+          let noAnswerFromUsers = state.gameParticipants.filter((id) => {
+            !!state.gameAnswers[state.currentRound]?.find(
+              (el) => el.userId === id
+            );
+          });
+          noAnswerFromUsers = noAnswerFromUsers.map((e, i, ar) =>
+            i === ar.length - 1 ? `<@${e}>` : `<@${e}>, `
+          );
+          state.currentChannel.send(
+            `Осталось 15 секунд! Ждём ответов от ${noAnswerFromUsers}`
+          );
+        }
+        timeout -= 1000;
+      } else {
+        clearInterval(interval);
+        this.roundVote();
+      }
+    }, 1000);
+  },
+
+  roundVote(client, interaction) {
+    let textBody = "";
+    state.gameAnswers[state.currentRound]?.forEach((e, i) => {
+      textBody += `${state.emojis[i]}: ${e.answer} \n`;
+    });
+
+    state.currentChannel
+      .send(
+        `Настало время голосовать за наиболее понравившийся ответ! \n ${textBody}`
+      )
+      .then((event) =>
+        state.gameAnswers[state.currentRound]?.forEach(async (e, i) => {
+          const emoji = state.emojis[i];
+          await event.react(emoji);
+        })
+      );
   },
 
   checkGameParticipant(userId) {
@@ -87,6 +154,7 @@ const actions = {
       return;
     }
     state.gameParticipants.push(interaction.user.id);
+
     interaction.reply(
       `<@${interaction.user.id}> Вы присоединились в качестве игрока!`
     );
@@ -103,13 +171,16 @@ const actions = {
   setParticipantsAnswer(client, message) {
     const userIsParticipating = this.checkGameParticipant(message.author.id);
     if (!userIsParticipating) return;
-    state.gameAnswers = {
+    if (!state.gameAnswers[state.currentRound]) {
+      state.gameAnswers[state.currentRound] = [];
+    }
+    state.gameAnswers[state.currentRound].push({
       questionId: state.currentQuestion.id,
       userId: message.author.id,
       userName: message.author.globalName,
       answer: message.content,
-    };
-    //TODO если ответов на вопрос 8, заканчиваем этап опроса
+    });
+
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
     console.log(state.gameAnswers, "state.gameAnswers");
   },
