@@ -6,7 +6,7 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 5,
+  questionsPerRound: 3,
   rounds: 3,
   gameIsRunning: false,
   gameParticipants: [],
@@ -14,8 +14,9 @@ const state = {
   gameScore: [],
   gameAnswers: {},
   gameQuestions: [],
-  currentQuestion: {},
+  currentQuestion: 1,
   currentVoteMessage: null,
+  quiplash: 0,
   waitTime: 10000,
   startGameTimeout: null,
   roundTimeout: 25000,
@@ -94,10 +95,10 @@ const actions = {
   },
 
   startRound() {
-    state.currentQuestion = state.gameQuestions[state.currentRound - 1];
+    const question = state.gameQuestions[state.currentQuestion - 1];
     state.currentChannel.send(
       `РАУНД ${state.currentRound}
-      \nВопрос: ${state.currentQuestion?.question} 
+      \nВопрос: ${question?.question} 
       \nУчастники, присылайте ответы мне в личные сообщения!`
     );
     let interval;
@@ -105,7 +106,7 @@ const actions = {
     interval = setInterval(() => {
       if (timeout > 0) {
         if (
-          state?.gameAnswers[state.currentRound]?.length ===
+          state?.gameAnswers[state.currentQuestion]?.length ===
           state?.gameParticipants?.length
         ) {
           this.roundVote();
@@ -114,7 +115,7 @@ const actions = {
         }
         if (timeout === 15000) {
           let noAnswerFromUsers = state.gameParticipants.filter((id) => {
-            !!state.gameAnswers[state.currentRound]?.find(
+            !!state.gameAnswers[state.currentQuestion]?.find(
               (el) => el.userId === id
             );
           });
@@ -135,7 +136,7 @@ const actions = {
 
   roundVote(client, interaction) {
     let textBody = "";
-    state.gameAnswers[state.currentRound]?.forEach((e, i, arr) => {
+    state.gameAnswers[state.currentQuestion]?.forEach((e, i, arr) => {
       textBody += `${state.emojis[i]}: ${e.answer} \n`;
       arr[i] = { ...e, emojiName: state.emojis[i] };
     });
@@ -148,44 +149,91 @@ const actions = {
         {
           state.currentVoteMessage = m;
           const filter = (reaction, user) => {
-            return state.emojis.includes(reaction.emoji.name);
+            return state.emojis.includes(reaction.emoji.name) && !user.bot;
           };
 
-          for (const e of state.gameAnswers[state.currentRound]) {
-            const i = state.gameAnswers[state.currentRound].indexOf(e);
+          for (const e of state.gameAnswers[state.currentQuestion]) {
+            const i = state.gameAnswers[state.currentQuestion].indexOf(e);
             const emoji = state.emojis[i];
             await m.react(emoji);
             await m.react(state.emojis[i + 1]);
           }
-          const collected = await m.awaitReactions({
-            filter,
+          const collector = m.createReactionCollector({
+            filter: filter,
             time: 10000,
           });
+          collector.on("collect", (reaction, user) => {
+            const userReactions = collector.collected.filter((c) =>
+              c.users.cache.has(user.id)
+            );
+            userReactions.forEach((item, key) => {
+              if (item.emoji.name !== reaction.emoji.name) {
+                collector.collected.delete(key);
+              }
+            });
+            state.currentChannel.send(
+              `Collected ${reaction.emoji.name} from ${user.tag}`
+            );
+          });
 
-          this.findRoundWinner(collected);
+          collector.on("end", (collected) => {
+            console.log(`Collected ${collected.size} items`);
+            this.spreadVotes(collected);
+          });
+          // const collected = await m.awaitReactions({
+          //   filter,
+          //   time: 10000,
+          // });
         }
       })
       .catch((e) => console.error(e?.size || e, "ERROR"));
   },
 
-  findRoundWinner(collected) {
+  spreadVotes(collected) {
+    // console.log(collected, "COLLECTED");
+    collected.forEach((item) => {
+      {
+        if (item.count > 1) {
+          const answer = state.gameAnswers[state.currentQuestion].find(
+            (e) => e.emojiName === item._emoji.name
+          );
+          const votedParticipant = state.gameParticipants.find(
+            (e) => e.userId == answer.userId
+          );
+          if (item.count - 1 === collected.size) {
+            state.quiplash = 1000;
+          }
+          votedParticipant.score +=
+            item.count * 100 * state.currentRound + state.quiplash;
+        }
+      }
+    });
     const largestVote = [...collected.values()].reduce((p, n) => {
       p = p?.count > n?.count ? p : n;
       return p;
     });
-    console.log(largestVote, "largestVote");
-    const winner = state.gameAnswers[state.currentRound].find(
+
+    // console.log(largestVote, "largestVote");
+    const bestAnswer = state.gameAnswers[state.currentQuestion].find(
       (e) => e.emojiName === largestVote._emoji.name
     );
-    state.currentChannel.send(
-      `Победил ${winner.userName} c ${largestVote.count - 1} очков!!`
+
+    const winner = state.gameParticipants.find(
+      (e) => e.userId == bestAnswer.userId
     );
+    state.currentChannel.send(
+      `Победил ${winner.userName} c ${largestVote.count - 1} очков!! ${
+        state.quiplash ? "КУПЛЕШ +1000 очков" : ""
+      }
+      Всего проголосовало: ${collected.size}`
+    );
+    state.quiplash = 0;
   },
   checkGameParticipant(userId) {
-    return !!state.gameParticipants.find((e) => e === userId);
+    return !!state.gameParticipants.find((e) => e.userId === userId);
   },
   checkAudienceParticipant(userId) {
-    return !!state.gameAudience.find((e) => e === userId);
+    return !!state.gameAudience.find((e) => e.userId === userId);
   },
   addGameParticipant(interaction) {
     if (!state.gameIsRunning) {
@@ -197,7 +245,11 @@ const actions = {
       interaction.reply("Вы уже принимаете участие в игре!");
       return;
     }
-    state.gameParticipants.push(interaction.user.id);
+    state.gameParticipants.push({
+      userId: interaction.user.id,
+      userName: interaction.user.globalName,
+      score: 0,
+    });
 
     interaction.reply(
       `<@${interaction.user.id}> Вы присоединились в качестве игрока!`
@@ -215,13 +267,12 @@ const actions = {
   setParticipantsAnswer(client, message) {
     const userIsParticipating = this.checkGameParticipant(message.author.id);
     if (!userIsParticipating) return;
-    if (!state.gameAnswers[state.currentRound]) {
-      state.gameAnswers[state.currentRound] = [];
+    if (!state.gameAnswers[state.currentQuestion]) {
+      state.gameAnswers[state.currentQuestion] = [];
     }
-    state.gameAnswers[state.currentRound].push({
-      questionId: state.currentQuestion.id,
+    state.gameAnswers[state.currentQuestion].push({
+      questionId: state.gameAnswers[state.currentQuestion]?.id,
       userId: message.author.id,
-      userName: message.author.globalName,
       answer: message.content,
     });
 
