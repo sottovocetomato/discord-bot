@@ -15,6 +15,7 @@ const state = {
   gameAnswers: {},
   gameQuestions: [],
   currentQuestion: {},
+  currentVoteMessage: null,
   waitTime: 10000,
   startGameTimeout: null,
   roundTimeout: 25000,
@@ -67,7 +68,20 @@ const actions = {
 
   async handleGame(client, interaction) {
     if (!state.gameIsRunning) {
-      await interaction.reply("Cначала создайте игру :)");
+      const m = await interaction.reply({
+        content: "Cначала создайте игру :)",
+        fetchReply: true,
+      });
+      state.currentVoteMessage = m;
+      const filter = (reaction, user) => {
+        return state.emojis.includes(reaction.emoji.name);
+      };
+
+      const collected = await m.awaitReactions({
+        filter,
+        time: 10000,
+      });
+      console.log(collected, "collected");
       return;
     }
     if (state.gameParticipants.length < 1) {
@@ -129,12 +143,28 @@ const actions = {
       .send(
         `Настало время голосовать за наиболее понравившийся ответ! \n ${textBody}`
       )
-      .then((event) =>
-        state.gameAnswers[state.currentRound]?.forEach(async (e, i) => {
-          const emoji = state.emojis[i];
-          await event.react(emoji);
-        })
-      );
+      .then(async (m) => {
+        {
+          state.currentVoteMessage = m;
+          const filter = (reaction, user) => {
+            console.log(reaction, "reaction");
+            return reaction.emoji.name === "1️⃣";
+          };
+
+          for (const e of state.gameAnswers[state.currentRound]) {
+            const i = state.gameAnswers[state.currentRound].indexOf(e);
+            const emoji = state.emojis[i];
+            await m.react(emoji);
+            await m.react(state.emojis[i + 1]);
+          }
+          const collected = await m.awaitReactions({
+            filter,
+            time: 15000,
+          });
+          console.log(collected.size, "collected");
+        }
+      })
+      .catch((e) => console.error(e?.size || e, "ERROR"));
   },
 
   checkGameParticipant(userId) {

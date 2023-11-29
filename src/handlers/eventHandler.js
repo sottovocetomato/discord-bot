@@ -7,10 +7,10 @@ module.exports = (client) => {
   for (const eventFolder of eventFolders) {
     const eventName = eventFolder.split("\\").pop();
     const eventFiles = getAllFiles(eventFolder);
-    client.on(eventName, async (arg) => {
+    client.on(eventName, async (...args) => {
       for (const eventFile of eventFiles) {
         const eventFn = require(eventFile);
-        await eventFn(client, arg);
+        await eventFn(client, ...args);
       }
     });
   }
