@@ -135,8 +135,9 @@ const actions = {
 
   roundVote(client, interaction) {
     let textBody = "";
-    state.gameAnswers[state.currentRound]?.forEach((e, i) => {
+    state.gameAnswers[state.currentRound]?.forEach((e, i, arr) => {
       textBody += `${state.emojis[i]}: ${e.answer} \n`;
+      arr[i] = { ...e, emojiName: state.emojis[i] };
     });
 
     state.currentChannel
@@ -160,7 +161,7 @@ const actions = {
             filter,
             time: 10000,
           });
-          console.log(collected, "collected");
+
           this.findRoundWinner(collected);
         }
       })
@@ -168,9 +169,17 @@ const actions = {
   },
 
   findRoundWinner(collected) {
-    const largestVote = [...collected].reduce((a, n) => {
+    const largestVote = [...collected.values()].reduce((p, n) => {
       p = p?.count > n?.count ? p : n;
-    }, {});
+      return p;
+    });
+    console.log(largestVote, "largestVote");
+    const winner = state.gameAnswers[state.currentRound].find(
+      (e) => e.emojiName === largestVote._emoji.name
+    );
+    state.currentChannel.send(
+      `Победил ${winner.userName} c ${largestVote.count - 1} очков!!`
+    );
   },
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e === userId);
