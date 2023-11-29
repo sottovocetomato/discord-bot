@@ -147,8 +147,7 @@ const actions = {
         {
           state.currentVoteMessage = m;
           const filter = (reaction, user) => {
-            console.log(reaction, "reaction");
-            return reaction.emoji.name === "1️⃣";
+            return state.emojis.includes(reaction.emoji.name);
           };
 
           for (const e of state.gameAnswers[state.currentRound]) {
@@ -159,14 +158,20 @@ const actions = {
           }
           const collected = await m.awaitReactions({
             filter,
-            time: 15000,
+            time: 10000,
           });
-          console.log(collected.size, "collected");
+          console.log(collected, "collected");
+          this.findRoundWinner(collected);
         }
       })
       .catch((e) => console.error(e?.size || e, "ERROR"));
   },
 
+  findRoundWinner(collected) {
+    const largestVote = [...collected].reduce((a, n) => {
+      p = p?.count > n?.count ? p : n;
+    }, {});
+  },
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e === userId);
   },

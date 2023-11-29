@@ -22,14 +22,15 @@ module.exports = async (client, reaction, user) => {
       r.users.cache.has(user.id)
     );
 
-    const userReactionsArray = [...userReactions.values()];
-    // if (!state.emojis.includes(userReactionsArray[userReactions.size - 1])) {
-    //   userReactionsArray[userReactions.size - 1].remove();
-    // }
-    // if (userReactions.size > 1) {
-    //   userReactionsArray.pop();
-    //   userReactionsArray.forEach((r) => r.remove());
-    // }
-    console.log(userReactions, "userReactions");
+    if (!state.emojis.includes(reaction._emoji.name)) {
+      reaction.remove();
+      return;
+    }
+    userReactions.forEach((r) => {
+      if (r._emoji.name !== reaction._emoji.name) {
+        r.users.remove(user.id);
+      }
+    });
+    // console.log(userReactions, "userReactions");
   }
 };
