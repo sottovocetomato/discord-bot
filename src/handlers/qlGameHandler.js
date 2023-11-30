@@ -162,6 +162,8 @@ const actions = {
             filter: filter,
             time: 10000,
           });
+
+          //TODO: при необходимости оптимизировать сбор реакций здесь и в handleReaction.js
           collector.on("collect", (reaction, user) => {
             const userReactions = collector.collected.filter((c) =>
               c.users.cache.has(user.id)
@@ -213,7 +215,7 @@ const actions = {
       return p;
     });
 
-    // console.log(largestVote, "largestVote");
+    console.log(largestVote, "largestVote");
     const bestAnswer = state.gameAnswers[state.currentQuestion].find(
       (e) => e.emojiName === largestVote._emoji.name
     );
