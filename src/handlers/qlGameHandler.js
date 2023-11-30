@@ -156,7 +156,7 @@ const actions = {
             const i = state.gameAnswers[state.currentQuestion].indexOf(e);
             const emoji = state.emojis[i];
             await m.react(emoji);
-            await m.react(state.emojis[i + 1]);
+            // await m.react(state.emojis[i + 1]);
           }
           const collector = m.createReactionCollector({
             filter: filter,
@@ -192,44 +192,44 @@ const actions = {
   },
 
   spreadVotes(collected) {
-    // console.log(collected, "COLLECTED");
-    collected.forEach((item) => {
-      {
-        if (item.count > 1) {
-          const answer = state.gameAnswers[state.currentQuestion].find(
-            (e) => e.emojiName === item._emoji.name
-          );
-          const votedParticipant = state.gameParticipants.find(
-            (e) => e.userId == answer.userId
-          );
-          if (item.count - 1 === collected.size) {
+    try {
+      let scoresMsg = "";
+      let largestVote = 1;
+      let winner = null;
+      state.gameAnswers[state.currentQuestion].forEach((ans) => {
+        const currVote = collected.get(ans.emojiName);
+        console.log(currVote, "currVote");
+        const votedParticipant = state.gameParticipants.find(
+          (e) => e.userId == ans.userId
+        );
+        if (currVote && currVote.count > 1) {
+          if (currVote.count - 1 === collected.size) {
             state.quiplash = 1000;
           }
-          votedParticipant.score +=
-            item.count * 100 * state.currentRound + state.quiplash;
+          const score =
+            (currVote.count - 1) * 100 * state.currentRound + state.quiplash;
+          votedParticipant.score += score;
+          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userName}>, он получает ${score} баллов \n`;
+          if (!largestVote) largestVote = currVote.count;
+          if (currVote.count > largestVote) {
+            winner = votedParticipant;
+            largestVote = currVote.count;
+          }
+        } else {
+          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userName}>, он получает 0 баллов \n`;
         }
-      }
-    });
-    const largestVote = [...collected.values()].reduce((p, n) => {
-      p = p?.count > n?.count ? p : n;
-      return p;
-    });
-
-    console.log(largestVote, "largestVote");
-    const bestAnswer = state.gameAnswers[state.currentQuestion].find(
-      (e) => e.emojiName === largestVote._emoji.name
-    );
-
-    const winner = state.gameParticipants.find(
-      (e) => e.userId == bestAnswer.userId
-    );
-    state.currentChannel.send(
-      `Победил ${winner.userName} c ${largestVote.count - 1} очков!! ${
-        state.quiplash ? "КУПЛЕШ +1000 очков" : ""
-      }
+      });
+      state.currentChannel.send(
+        `${scoresMsg}
+        Победил ${winner.userName} c ${largestVote - 1} голосов!! ${
+          state.quiplash ? "КУПЛЕШ +1000 очков" : ""
+        }
       Всего проголосовало: ${collected.size}`
-    );
-    state.quiplash = 0;
+      );
+      state.quiplash = 0;
+    } catch (e) {
+      state.currentChannel.send("Что-то пошло не так!");
+    }
   },
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e.userId === userId);
