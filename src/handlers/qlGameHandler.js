@@ -1,5 +1,16 @@
 const fs = require("fs");
 const path = require("path");
+
+const {
+  bold,
+  italic,
+  strikethrough,
+  underscore,
+  spoiler,
+  quote,
+  blockQuote,
+  EmbedBuilder,
+} = require("discord.js");
 const { shuffleArray } = require("../utils/helpers");
 
 const state = {
@@ -45,8 +56,8 @@ const actions = {
     if (state.gameIsRunning) {
       const message =
         state.gameParticipants?.length <= 8
-          ? "Игра уже идёт! Набирайте /ql_join, чтобы присоединиться как участник или /ql_aud, чтобы присоединится как зритель."
-          : "Игра уже идёт! Набирайте /ql_aud, чтобы присоединится как зритель.";
+          ? "Игра уже идёт! Набирайте /ql_join, чтобы присоединиться как участник!"
+          : "Игра уже идёт! Достигнуто максимальное кол-во участников!";
       interaction.reply(message);
       return;
     }
@@ -97,10 +108,11 @@ const actions = {
   startRound() {
     const question = state.gameQuestions[state.currentQuestion - 1];
     state.currentChannel.send(
-      `РАУНД ${state.currentRound}
+      `${bold("РАУНД " + state.currentRound)}
       \nВопрос: ${question?.question} 
-      \nУчастники, присылайте ответы мне в личные сообщения!`
+      \n${underscore("Участники, присылайте ответы мне в личные сообщения!")}`
     );
+
     let interval;
     let timeout = state.roundTimeout;
     interval = setInterval(() => {
@@ -137,13 +149,16 @@ const actions = {
   roundVote(client, interaction) {
     let textBody = "";
     state.gameAnswers[state.currentQuestion]?.forEach((e, i, arr) => {
-      textBody += `${state.emojis[i]}: ${e.answer} \n`;
+      textBody += `${state.emojis[i]} - ${e.answer}\n`;
       arr[i] = { ...e, emojiName: state.emojis[i] };
     });
 
     state.currentChannel
       .send(
-        `Настало время голосовать за наиболее понравившийся ответ! \n ${textBody}`
+        `\n${underscore(
+          "Настало время голосовать за наиболее понравившийся ответ!"
+        )} 
+        \n${textBody}`
       )
       .then(async (m) => {
         {
@@ -173,20 +188,16 @@ const actions = {
                 collector.collected.delete(key);
               }
             });
-            state.currentChannel.send(
-              `Collected ${reaction.emoji.name} from ${user.tag}`
-            );
+            // state.currentChannel.send(
+            //   `Collected ${reaction.emoji.name} from ${user.tag}`
+            // );
           });
 
           collector.on("end", (collected) => {
             // console.log(`Collected ${collected.size} items`);
-            console.log(collected, `COLLECTED`);
+            // console.log(collected, `COLLECTED`);
             this.spreadVotes(collected);
           });
-          // const collected = await m.awaitReactions({
-          //   filter,
-          //   time: 10000,
-          // });
         }
       })
       .catch((e) => console.error(e?.size || e, "ERROR"));
@@ -194,9 +205,11 @@ const actions = {
 
   spreadVotes(collected) {
     try {
-      let scoresMsg = "";
+      const exampleEmbed = new EmbedBuilder().setColor(0x0099ff);
+
       let largestVote = 1;
       let winner = null;
+      let scoresMsg = "";
       const votesNum = [...collected.values()].reduce((a, n) => {
         a += n?.count - 1;
         return a;
@@ -214,25 +227,39 @@ const actions = {
           const score =
             (currVote.count - 1) * 100 * state.currentRound + state.quiplash;
           votedParticipant.score += score;
-          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userName}>, он получает ${score} баллов \n`;
+          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userId}>, он получает ${score} баллов \n`;
           if (!largestVote) largestVote = currVote.count;
           if (currVote.count > largestVote) {
             winner = votedParticipant;
             largestVote = currVote.count;
           }
         } else {
-          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userName}>, он получает 0 баллов \n`;
+          scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userId}>, он получает 0 баллов \n`;
         }
       });
-      state.currentChannel.send(
-        `${scoresMsg}
-        Победил ${winner.userName} c ${largestVote - 1} голосов!! ${
-          state.quiplash ? "КУПЛЕШ +1000 очков" : ""
-        }
-      Всего проголосовало: ${votesNum}`
-      );
+      exampleEmbed.addFields({
+        name: "Результаты голосования:",
+        value: scoresMsg,
+      });
+      exampleEmbed.addFields({
+        name: "Победитель",
+        value: `Победил <@${winner.userId}> c ${largestVote - 1} голосов!! ${
+          state.quiplash ? bold("\n КУПЛЕШ +1000 очков") : ""
+        }`,
+      });
+
+      let text = "";
+      state.gameParticipants.forEach((p) => {
+        text += `<@${p.userId}> - ${p.score} очков \n`;
+      });
+      exampleEmbed.addFields({
+        name: "Текущее кол-во очков:",
+        value: text,
+      });
+      state.currentChannel.send({ embeds: [exampleEmbed] });
       state.quiplash = 0;
     } catch (e) {
+      console.error(e);
       state.currentChannel.send("Что-то пошло не так!");
     }
   },
