@@ -31,6 +31,6 @@ module.exports = async (client, reaction, user) => {
         r.users.remove(user.id);
       }
     });
-    console.log(userReactions, "userReactions");
+    // console.log(userReactions, "userReactions");
   }
 };

@@ -179,7 +179,8 @@ const actions = {
           });
 
           collector.on("end", (collected) => {
-            console.log(`Collected ${collected.size} items`);
+            // console.log(`Collected ${collected.size} items`);
+            console.log(collected, `COLLECTED`);
             this.spreadVotes(collected);
           });
           // const collected = await m.awaitReactions({
@@ -196,14 +197,18 @@ const actions = {
       let scoresMsg = "";
       let largestVote = 1;
       let winner = null;
+      const votesNum = [...collected.values()].reduce((a, n) => {
+        a += n?.count - 1;
+        return a;
+      }, 0);
       state.gameAnswers[state.currentQuestion].forEach((ans) => {
         const currVote = collected.get(ans.emojiName);
-        console.log(currVote, "currVote");
+        // console.log(currVote, "currVote");
         const votedParticipant = state.gameParticipants.find(
           (e) => e.userId == ans.userId
         );
         if (currVote && currVote.count > 1) {
-          if (currVote.count - 1 === collected.size) {
+          if (currVote.count - 1 === votesNum) {
             state.quiplash = 1000;
           }
           const score =
@@ -224,7 +229,7 @@ const actions = {
         Победил ${winner.userName} c ${largestVote - 1} голосов!! ${
           state.quiplash ? "КУПЛЕШ +1000 очков" : ""
         }
-      Всего проголосовало: ${collected.size}`
+      Всего проголосовало: ${votesNum}`
       );
       state.quiplash = 0;
     } catch (e) {
