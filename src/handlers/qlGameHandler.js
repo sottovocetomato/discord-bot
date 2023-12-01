@@ -108,10 +108,22 @@ const actions = {
 
   startRound() {
     const question = state.gameQuestions[state.currentQuestion - 1];
+    const roundMsg = bold("РАУНД " + state.currentRound);
+    const pointsMsg =
+      state?.currentRound > 1
+        ? "\nОчки умножаются на " + state.currentRound
+        : "";
+
+    const questionMsg = italic(
+      `Вопрос ${state.currentQuestion}: ${question?.question}`
+    );
+    const sendAnsMsg = underscore(
+      "Участники, присылайте ответы мне в личные сообщения!"
+    );
     state.currentChannel.send(
-      `${bold("РАУНД " + state.currentRound)}
-      \nВопрос ${state.currentQuestion}: ${question?.question} 
-      \n${underscore("Участники, присылайте ответы мне в личные сообщения!")}`
+      `${roundMsg} ${pointsMsg}
+      \n${questionMsg}  
+      \n${sendAnsMsg}`
     );
 
     let timeout = state.roundTimeout;
