@@ -6,11 +6,15 @@ const {
 const { state, actions } = require("../../handlers/qlGameHandler");
 
 module.exports = {
-  name: "ql_start",
-  description: "Начать игру",
+  name: "ql_end",
+  description: "Закончить игру",
   botPermissions: [PermissionFlagsBits.Administrator],
   callback: (client, interaction) => {
     // console.log(interaction, "interaction");
-    actions.startGame(client, interaction);
+    try {
+      actions.endGame(true, client, interaction);
+    } catch (e) {
+      console.error(e);
+    }
   },
 };

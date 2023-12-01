@@ -17,8 +17,8 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 3,
-  rounds: 3,
+  questionsPerRound: 2,
+  rounds: 2,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
@@ -27,9 +27,11 @@ const state = {
   gameQuestions: [],
   currentQuestion: 1,
   currentVoteMessage: null,
+  gameInitiatorId: null,
   quiplash: 0,
   waitTime: 10000,
   startGameTimeout: null,
+  startRoundInterval: null,
   roundTimeout: 25000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
@@ -52,7 +54,7 @@ const actions = {
       .filter((e) => !!e);
   },
 
-  createGame(client, interaction) {
+  async createGame(client, interaction) {
     if (state.gameIsRunning) {
       const message =
         state.gameParticipants?.length <= 8
@@ -64,21 +66,27 @@ const actions = {
     this.setCurrentGameId();
     state.gameIsRunning = true;
     this.readQuestions();
+    state.gameParticipants.push({
+      userId: interaction.user.id,
+      userName: interaction.user.globalName,
+      score: 0,
+    });
     state.currentChannel = client.channels.cache.get(interaction.channelId);
-    state.startGameTimeout = setTimeout(() => {
+    state.gameInitiatorId = interaction.user.id;
+    state.startGameTimeout = setTimeout(async () => {
+      if (!state.gameIsRunning) return;
       if (state.gameParticipants.length < 1) {
         state.gameIsRunning = false;
         state.currentChannel.send(
           "Недостаточное количество участников для начала игры :("
         );
       } else {
-        this.handleGame(client, interaction);
+        await this.startGame(client, interaction);
       }
-      clearTimeout(state.startGameTimeout);
     }, state.waitTime);
   },
 
-  async handleGame(client, interaction) {
+  async startGame(client, interaction) {
     if (!state.gameIsRunning) {
       const m = await interaction.reply({
         content: "Cначала создайте игру :)",
@@ -109,20 +117,19 @@ const actions = {
     const question = state.gameQuestions[state.currentQuestion - 1];
     state.currentChannel.send(
       `${bold("РАУНД " + state.currentRound)}
-      \nВопрос: ${question?.question} 
+      \nВопрос ${state.currentQuestion}: ${question?.question} 
       \n${underscore("Участники, присылайте ответы мне в личные сообщения!")}`
     );
 
-    let interval;
     let timeout = state.roundTimeout;
-    interval = setInterval(() => {
+    state.startRoundInterval = setInterval(() => {
       if (timeout > 0) {
         if (
           state?.gameAnswers[state.currentQuestion]?.length ===
           state?.gameParticipants?.length
         ) {
           this.roundVote();
-          clearInterval(interval);
+          clearInterval(state.startRoundInterval);
           return;
         }
         if (timeout === 15000) {
@@ -140,7 +147,7 @@ const actions = {
         }
         timeout -= 1000;
       } else {
-        clearInterval(interval);
+        clearInterval(state.startRoundInterval);
         this.roundVote();
       }
     }, 1000);
@@ -156,7 +163,7 @@ const actions = {
     state.currentChannel
       .send(
         `\n${underscore(
-          "Настало время голосовать за наиболее понравившийся ответ!"
+          "Настало время голосовать за наиболее забавный для вас ответ!"
         )} 
         \n${textBody}`
       )
@@ -196,16 +203,22 @@ const actions = {
           collector.on("end", (collected) => {
             // console.log(`Collected ${collected.size} items`);
             // console.log(collected, `COLLECTED`);
-            this.spreadVotes(collected);
+            this.settleScores(collected);
+            state.currentChannel.send(`Скоро будет задан, следующий вопрос...`);
+            setTimeout(() => {
+              if (state.gameIsRunning) {
+                this.endStage();
+              }
+            }, 10000);
           });
         }
       })
       .catch((e) => console.error(e?.size || e, "ERROR"));
   },
 
-  spreadVotes(collected) {
+  settleScores(collected) {
     try {
-      const exampleEmbed = new EmbedBuilder().setColor(0x0099ff);
+      const scoreEmbed = new EmbedBuilder().setColor(0x0099ff);
 
       let largestVote = 1;
       let winner = null;
@@ -232,36 +245,122 @@ const actions = {
           if (currVote.count > largestVote) {
             winner = votedParticipant;
             largestVote = currVote.count;
+          } else if (currVote.count === largestVote) {
+            winner = [winner].push(votedParticipant);
           }
         } else {
           scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userId}>, он получает 0 баллов \n`;
         }
       });
-      exampleEmbed.addFields({
-        name: "Результаты голосования:",
-        value: scoresMsg,
+      this.sendScoresEmbed(scoreEmbed, scoresMsg, winner, largestVote);
+    } catch (e) {
+      console.error(e);
+      state.currentChannel.send("Что-то пошло не так!");
+    }
+  },
+
+  sendScoresEmbed(embed, scoresMsg, winner, largestVote) {
+    console.log(winner, "winner");
+    embed.addFields({
+      name: "Результаты голосования:",
+      value: scoresMsg,
+    });
+
+    if (Array.isArray(winner)) {
+      let text = "";
+      winner.forEach((e) => {
+        text += `<@${e.userId}> c кол-вом голосов: ${largestVote - 1} !`;
       });
-      exampleEmbed.addFields({
+      embed.addFields({
+        name: "Ничья!",
+        value: text,
+      });
+    } else {
+      embed.addFields({
         name: "Победитель",
         value: `Победил <@${winner.userId}> c ${largestVote - 1} голосов!! ${
           state.quiplash ? bold("\n КУПЛЕШ +1000 очков") : ""
         }`,
       });
-
-      let text = "";
-      state.gameParticipants.forEach((p) => {
-        text += `<@${p.userId}> - ${p.score} очков \n`;
-      });
-      exampleEmbed.addFields({
-        name: "Текущее кол-во очков:",
-        value: text,
-      });
-      state.currentChannel.send({ embeds: [exampleEmbed] });
-      state.quiplash = 0;
-    } catch (e) {
-      console.error(e);
-      state.currentChannel.send("Что-то пошло не так!");
     }
+
+    let text = "";
+    state.gameParticipants.forEach((p) => {
+      text += `<@${p.userId}> - ${p.score} очков \n`;
+    });
+    embed.addFields({
+      name: "Текущее кол-во очков:",
+      value: text,
+    });
+    state.currentChannel.send({ embeds: [embed] });
+    state.quiplash = 0;
+  },
+
+  endStage() {
+    const questionsLimit = state.questionsPerRound * state.currentRound;
+    if (
+      state.currentQuestion === questionsLimit &&
+      state.currentRound < state.rounds
+    ) {
+      state.currentQuestion++;
+      state.currentRound++;
+      this.startRound();
+      return;
+    }
+    if (
+      state.currentQuestion >= questionsLimit &&
+      state.currentRound >= state.rounds
+    ) {
+      this.endGame();
+      return;
+    }
+
+    if (state.currentQuestion < state.questionsPerRound) {
+      state.currentQuestion++;
+      this.startRound();
+    }
+  },
+
+  endGame(manual = false, client, interaction) {
+    if (!state.gameIsRunning) {
+      interaction.reply({
+        content: "Сначала создайте игру :)",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (manual && interaction.user.id !== state.gameInitiatorId) {
+      interaction.reply({
+        content: "Закончить игру может только тот, кто её начал",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (manual) {
+      interaction.reply({
+        content: "Заканчиваем игру",
+        ephemeral: true,
+      });
+    }
+    state.currentChannel.send("Игра закончена");
+    this.clearGameData();
+  },
+  clearGameData() {
+    clearInterval(state.startRoundInterval);
+    state.currentGameId = null;
+    state.currentRound = 1;
+    state.questionsPerRound = 2;
+    state.rounds = 2;
+    state.gameIsRunning = false;
+    state.gameParticipants = [];
+    state.gameAudience = [];
+    state.gameScore = [];
+    state.gameAnswers = {};
+    state.gameQuestions = [];
+    state.currentQuestion = 1;
+    state.currentVoteMessage = null;
+    state.startGameTimeout = null;
+    state.startRoundInterval = null;
   },
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e.userId === userId);
@@ -271,12 +370,18 @@ const actions = {
   },
   addGameParticipant(interaction) {
     if (!state.gameIsRunning) {
-      interaction.reply("Cначала создайте игру, чтобы присоединиться к ней :)");
+      interaction.reply({
+        content: "Cначала создайте игру, чтобы присоединиться к ней :)",
+        ephemeral: true,
+      });
       return;
     }
     const userParticipating = this.checkGameParticipant(interaction.user.id);
     if (userParticipating) {
-      interaction.reply("Вы уже принимаете участие в игре!");
+      interaction.reply({
+        content: "Вы уже принимаете участие в игре!",
+        ephemeral: true,
+      });
       return;
     }
     state.gameParticipants.push({
@@ -285,10 +390,12 @@ const actions = {
       score: 0,
     });
 
-    interaction.reply(
-      `<@${interaction.user.id}> Вы присоединились в качестве игрока!`
-    );
+    interaction.reply({
+      content: `<@${interaction.user.id}> Вы присоединились в качестве игрока!`,
+      ephemeral: true,
+    });
   },
+
   addAudienceParticipant(user, interaction) {
     const userParticipating = this.checkAudienceParticipant(user.id);
     if (userParticipating) {
