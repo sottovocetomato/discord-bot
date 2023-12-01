@@ -57,7 +57,6 @@ const actions = {
 
   async createGame(client, interaction) {
     if (state.gameIsRunning) {
-      state.canJoin = true;
       const message =
         state.gameParticipants?.length <= 8
           ? "Игра уже идёт! Набирайте /ql_join, чтобы присоединиться как участник!"
@@ -67,6 +66,7 @@ const actions = {
     }
     this.setCurrentGameId();
     state.gameIsRunning = true;
+    state.canJoin = true;
     this.readQuestions();
     state.gameParticipants.push({
       userId: interaction.user.id,
@@ -90,20 +90,10 @@ const actions = {
 
   async startGame(client, interaction) {
     if (!state.gameIsRunning) {
-      const m = await interaction.reply({
+      await interaction.reply({
         content: "Cначала создайте игру :)",
         fetchReply: true,
       });
-      state.currentVoteMessage = m;
-      const filter = (reaction, user) => {
-        return state.emojis.includes(reaction.emoji.name);
-      };
-
-      const collected = await m.awaitReactions({
-        filter,
-        time: 10000,
-      });
-      console.log(collected, "collected");
       return;
     }
     if (state.gameParticipants.length < 1) {
@@ -136,16 +126,15 @@ const actions = {
           return;
         }
         if (timeout === 15000) {
-          let noAnswerFromUsers = Object.values(state.gameParticipants).filter(
-            (id) => {
-              !!state.gameAnswers[state.currentQuestion]?.find(
-                (el) => el.userId === id
-              );
-            }
+          let noAnswerFromUsers = state.gameParticipants.filter(
+            (p) =>
+              !state.gameAnswers[state.currentQuestion]?.find(
+                (el) => el.userId === p.userId
+              )
           );
-          noAnswerFromUsers = noAnswerFromUsers.map((e, i, ar) =>
-            i === ar.length - 1 ? `<@${e}>` : `<@${e}>, `
-          );
+          noAnswerFromUsers = noAnswerFromUsers
+            .map((e) => `<@${e.userId}>`)
+            .join(",");
           state.currentChannel.send(
             `Осталось 15 секунд! Ждём ответов от ${noAnswerFromUsers}`
           );
@@ -153,6 +142,17 @@ const actions = {
         timeout -= 1000;
       } else {
         clearInterval(state.startRoundInterval);
+        if (!state.gameAnswers?.[state.currentQuestion]) {
+          state.currentChannel.send(
+            `Никто из участников не дал ответа на вопрос :( Скоро будет задан следующий вопрос...`
+          );
+          setTimeout(() => {
+            if (state.gameIsRunning) {
+              this.endStage();
+            }
+          }, 10000);
+          return;
+        }
         this.roundVote();
       }
     }, 1000);
@@ -302,27 +302,38 @@ const actions = {
   },
 
   endStage() {
-    const questionsLimit = state.questionsPerRound * state.currentRound;
-    if (
-      state.currentQuestion === questionsLimit &&
-      state.currentRound < state.rounds
-    ) {
-      state.currentQuestion++;
-      state.currentRound++;
-      this.startRound();
-      return;
-    }
-    if (
-      state.currentQuestion >= questionsLimit &&
-      state.currentRound >= state.rounds
-    ) {
-      this.endGame();
-      return;
-    }
+    try {
+      const questionsLimit = state.questionsPerRound * state.currentRound;
 
-    if (state.currentQuestion < state.questionsPerRound) {
-      state.currentQuestion++;
-      this.startRound();
+      if (
+        state.currentQuestion >= questionsLimit &&
+        state.currentRound < state.rounds
+      ) {
+        state.currentChannel.send(
+          `Вопрос ${state.currentQuestion}, лимит ${questionsLimit}, раунд ${state.currentRound} из ${state.rounds} `
+        );
+        state.currentQuestion++;
+        state.currentRound++;
+        this.startRound();
+        return;
+      }
+      if (
+        state.currentQuestion >= questionsLimit &&
+        state.currentRound >= state.rounds
+      ) {
+        state.currentChannel.send(
+          `Вопрос ${state.currentQuestion}, лимит ${questionsLimit}, раунд ${state.currentRound} `
+        );
+        this.endGame();
+        return;
+      }
+
+      if (state.currentQuestion < questionsLimit) {
+        state.currentQuestion++;
+        this.startRound();
+      }
+    } catch (e) {
+      console.error(e);
     }
   },
 
