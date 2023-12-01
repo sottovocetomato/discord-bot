@@ -14,6 +14,7 @@ const {
 const { shuffleArray } = require("../utils/helpers");
 
 const state = {
+  canJoin: false,
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
@@ -56,6 +57,7 @@ const actions = {
 
   async createGame(client, interaction) {
     if (state.gameIsRunning) {
+      state.canJoin = true;
       const message =
         state.gameParticipants?.length <= 8
           ? "Игра уже идёт! Набирайте /ql_join, чтобы присоединиться как участник!"
@@ -76,7 +78,7 @@ const actions = {
     state.startGameTimeout = setTimeout(async () => {
       if (!state.gameIsRunning) return;
       if (state.gameParticipants.length < 1) {
-        state.gameIsRunning = false;
+        this.clearGameData();
         state.currentChannel.send(
           "Недостаточное количество участников для начала игры :("
         );
@@ -110,6 +112,7 @@ const actions = {
       );
       return;
     }
+    this.canJoin = false;
     this.startRound();
   },
 
@@ -133,11 +136,13 @@ const actions = {
           return;
         }
         if (timeout === 15000) {
-          let noAnswerFromUsers = state.gameParticipants.filter((id) => {
-            !!state.gameAnswers[state.currentQuestion]?.find(
-              (el) => el.userId === id
-            );
-          });
+          let noAnswerFromUsers = Object.values(state.gameParticipants).filter(
+            (id) => {
+              !!state.gameAnswers[state.currentQuestion]?.find(
+                (el) => el.userId === id
+              );
+            }
+          );
           noAnswerFromUsers = noAnswerFromUsers.map((e, i, ar) =>
             i === ar.length - 1 ? `<@${e}>` : `<@${e}>, `
           );
@@ -361,6 +366,7 @@ const actions = {
     state.currentVoteMessage = null;
     state.startGameTimeout = null;
     state.startRoundInterval = null;
+    state.canJoin = false;
   },
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e.userId === userId);
@@ -369,6 +375,13 @@ const actions = {
     return !!state.gameAudience.find((e) => e.userId === userId);
   },
   addGameParticipant(interaction) {
+    if (!state.canJoin) {
+      interaction.reply({
+        content: "Невозможно присоединиться к игре на данном этапе",
+        ephemeral: true,
+      });
+      return;
+    }
     if (!state.gameIsRunning) {
       interaction.reply({
         content: "Cначала создайте игру, чтобы присоединиться к ней :)",
