@@ -27,9 +27,7 @@ module.exports = async (client, reaction, user) => {
       return;
     }
     userReactions.forEach((r) => {
-      if (r._emoji.name !== reaction._emoji.name) {
-        r.users.remove(user.id);
-      }
+      actions.checkUserReactionsVote(r, reaction, user);
     });
     // console.log(userReactions, "userReactions");
   }

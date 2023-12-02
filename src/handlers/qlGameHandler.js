@@ -513,6 +513,21 @@ const actions = {
   //   state.gameAudience.push(user.id);
   // },
 
+  checkUserReactionsVote(cachedReaction, sentReaction, user) {
+    const userIsParticipant = state.gameAnswers[state.currentQuestion].find(
+      (a) => a.userId === user.id
+    );
+    if (cachedReaction._emoji.name !== sentReaction._emoji.name) {
+      cachedReaction.users.remove(user.id);
+    }
+    if (
+      userIsParticipant &&
+      userIsParticipant.emojiName === sentReaction._emoji.name
+    ) {
+      sentReaction.users.remove(user.id);
+    }
+  },
+
   setParticipantsAnswer(client, message) {
     const userIsParticipating = this.checkGameParticipant(message.author.id);
     // console.log(state.canAnswer, "state.canAnswer");
