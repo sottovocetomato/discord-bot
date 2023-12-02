@@ -15,6 +15,8 @@ const { shuffleArray } = require("../utils/helpers");
 
 const state = {
   canJoin: false,
+  canVote: false,
+  canAnswer: false,
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
@@ -122,7 +124,7 @@ const actions = {
     const sendAnsMsg = underscore(
       "Участники, присылайте ответы мне в личные сообщения!"
     );
-
+    state.canAnswer = true;
     state.currentChannel.send(
       `${roundMsg} ${pointsMsg}
       \n${questionMsg}  
@@ -175,6 +177,7 @@ const actions = {
 
   roundVote(client, interaction) {
     let textBody = "";
+    state.canAnswer = false;
     state.gameAnswers[state.currentQuestion]?.forEach((e, i, arr) => {
       textBody += `${state.emojis[i]} - ${e.answer}\n`;
       arr[i] = { ...e, emojiName: state.emojis[i] };
@@ -183,7 +186,7 @@ const actions = {
     state.currentChannel
       .send(
         `\n${underscore(
-          "Настало время голосовать за наиболее забавный для вас ответ!"
+          "Настало время для голосования зрителей! Ставьте реакции на понравившийся ответ!"
         )} 
         \n${textBody}`
       )
@@ -290,8 +293,12 @@ const actions = {
       name: "Результаты голосования:",
       value: scoresMsg,
     });
-
-    if (Array.isArray(winner)) {
+    if (!winner) {
+      embed.addFields({
+        name: "Ой, как же так...",
+        value: `Похоже, пользователи забыли проголосовать...`,
+      });
+    } else if (Array.isArray(winner)) {
       let text = "";
       winner.forEach((e) => {
         text += `<@${e.userId}> c кол-вом голосов: ${largestVote - 1} !\n`;
@@ -303,7 +310,7 @@ const actions = {
     } else {
       embed.addFields({
         name: "Победитель",
-        value: `Победил <@${winner.userId}> c ${largestVote - 1} голосов!! ${
+        value: `Победил <@${winner?.userId}> c ${largestVote - 1} голосов!! ${
           state.quiplash ? bold("\n КУПЛЕШ +1000 очков") : ""
         }`,
       });
@@ -396,8 +403,10 @@ const actions = {
     }
     if (gameWinners.length > 1) {
       winnerEmbed.addFields({
-        name: "Следующие игроки набрали одинаковое кол-во очков:",
-        value: gameWinners.map((e) => `<@${e.userId}>`).join(","),
+        name: "Поздравляем!",
+        value: `Следующие игроки набрали одинаковое кол-во очков: ${gameWinners
+          .map((e) => `\n<@${e.userId}>`)
+          .join(",")}`,
       });
     }
     state.currentChannel.send({ embeds: [winnerEmbed] });
@@ -424,9 +433,9 @@ const actions = {
   checkGameParticipant(userId) {
     return !!state.gameParticipants.find((e) => e.userId === userId);
   },
-  checkAudienceParticipant(userId) {
-    return !!state.gameAudience.find((e) => e.userId === userId);
-  },
+  // checkAudienceParticipant(userId) {
+  //   return !!state.gameAudience.find((e) => e.userId === userId);
+  // },
   addGameParticipant(interaction) {
     if (!state.canJoin) {
       interaction.reply({
@@ -462,18 +471,31 @@ const actions = {
     });
   },
 
-  addAudienceParticipant(user, interaction) {
-    const userParticipating = this.checkAudienceParticipant(user.id);
-    if (userParticipating) {
-      interaction.reply("Вы уже принимаете участие в игре!");
-      return;
-    }
-    state.gameAudience.push(user.id);
-  },
+  // addAudienceParticipant(user, interaction) {
+  //   const userParticipating = this.checkAudienceParticipant(user.id);
+  //   if (userParticipating) {
+  //     interaction.reply("Вы уже принимаете участие в игре!");
+  //     return;
+  //   }
+  //   state.gameAudience.push(user.id);
+  // },
 
   setParticipantsAnswer(client, message) {
     const userIsParticipating = this.checkGameParticipant(message.author.id);
-    if (!userIsParticipating) return;
+    // console.log(state.canAnswer, "state.canAnswer");
+    // console.log(
+    //   !userIsParticipating || !state.canAnswer,
+    //   "!userIsParticipating || !state.canAnswer"
+    // );
+    if (!userIsParticipating || !state.canAnswer) return;
+    if (
+      state.gameAnswers?.[state.currentQuestion]?.find(
+        (p) => p.userId === message.author.id
+      )
+    ) {
+      message.reply(`Вы уже давали ответ на данный вопрос`);
+      return;
+    }
     if (!state.gameAnswers[state.currentQuestion]) {
       state.gameAnswers[state.currentQuestion] = [];
     }
