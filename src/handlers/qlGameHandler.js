@@ -20,8 +20,8 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 1,
-  rounds: 1,
+  questionsPerRound: 2,
+  rounds: 2,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
@@ -33,10 +33,10 @@ const state = {
   currentVoteMessage: null,
   gameInitiatorId: null,
   quiplash: 0,
-  waitTime: 10000,
-  startGameTimeout: null,
+  waitTime: 40000,
+  startGameInterval: null,
   startRoundInterval: null,
-  roundTimeout: 25000,
+  roundTimeout: 60000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -79,17 +79,29 @@ const actions = {
     });
     state.currentChannel = client.channels.cache.get(interaction.channelId);
     state.gameInitiatorId = interaction.user.id;
-    state.startGameTimeout = setTimeout(async () => {
-      if (!state.gameIsRunning) return;
-      if (state.gameParticipants.length < 1) {
-        this.clearGameData();
-        state.currentChannel.send(
-          "Недостаточное количество участников для начала игры :("
-        );
-      } else {
-        await this.startGame(client, interaction);
+    let timeout = state.waitTime;
+    state.startGameInterval = setInterval(async () => {
+      if (!state.gameIsRunning) {
+        clearInterval(state.startGameInterval);
+        return;
       }
-    }, state.waitTime);
+      if (timeout === 15000) {
+        state.currentChannel.send("До начала игры осталось 15 секунд!");
+      }
+      if (timeout <= 0) {
+        if (state.gameParticipants.length < 1) {
+          this.clearGameData();
+          state.currentChannel.send(
+            "Недостаточное количество участников для начала игры :("
+          );
+        } else {
+          await this.startGame(client, interaction);
+        }
+        clearInterval(state.startGameInterval);
+      }
+
+      timeout -= 1000;
+    }, 1000);
   },
 
   async startGame(client, interaction) {
@@ -215,12 +227,16 @@ const actions = {
             );
             userReactions.forEach((item, key) => {
               if (item.emoji.name !== reaction.emoji.name) {
-                collector.collected.delete(key);
+                const currCollectedVote = collector.collected.get(key);
+                collector.collected.set(key, {
+                  ...currCollectedVote,
+                  count: --currCollectedVote.count,
+                });
               }
             });
-            // state.currentChannel.send(
-            //   `Collected ${reaction.emoji.name} from ${user.tag}`
-            // );
+            state.currentChannel.send(
+              `Collected ${reaction.emoji.name} from ${user.tag}`
+            );
           });
 
           collector.on("end", (collected) => {
@@ -246,7 +262,7 @@ const actions = {
   settleScores(collected) {
     try {
       const scoreEmbed = new EmbedBuilder().setColor(0x0099ff);
-
+      console.log(collected, "COLLECTED");
       let largestVote = 1;
       let winner = null;
       let scoresMsg = "";
@@ -255,8 +271,10 @@ const actions = {
         return a;
       }, 0);
       state.gameAnswers[state.currentQuestion].forEach((ans) => {
+        console.log(state.gameAnswers, "state.gameAnswers");
+        console.log(ans, "ans");
         const currVote = collected.get(ans.emojiName);
-        // console.log(currVote, "currVote");
+        console.log(currVote, "currVote");
         const votedParticipant = state.gameParticipants.find(
           (e) => e.userId == ans.userId
         );
@@ -466,8 +484,7 @@ const actions = {
     });
 
     interaction.reply({
-      content: `<@${interaction.user.id}> Вы присоединились в качестве игрока!`,
-      ephemeral: true,
+      content: `<@${interaction.user.id}> присоединлся/лась к игре`,
     });
   },
 
@@ -500,13 +517,12 @@ const actions = {
       state.gameAnswers[state.currentQuestion] = [];
     }
     state.gameAnswers[state.currentQuestion].push({
-      questionId: state.gameAnswers[state.currentQuestion]?.id,
+      questionId: state.currentQuestion,
       userId: message.author.id,
       answer: message.content,
     });
 
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
-    console.log(state.gameAnswers, "state.gameAnswers");
   },
 };
 
