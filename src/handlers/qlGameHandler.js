@@ -288,6 +288,14 @@ const actions = {
         a += n?.count - 1;
         return a;
       }, 0);
+      if (!votesNum) {
+        scoreEmbed.addFields({
+          name: "Ой, как же так...",
+          value: `Похоже, пользователи забыли проголосовать...`,
+        });
+        state.currentChannel.send({ embeds: [scoreEmbed] });
+        return;
+      }
       state.gameAnswers[state.currentQuestion].forEach((ans) => {
         console.log(state.gameAnswers, "state.gameAnswers");
         console.log(ans, "ans");
@@ -325,42 +333,32 @@ const actions = {
 
   sendScoresEmbed(embed, scoresMsg, winner, largestVote) {
     console.log(winner, "winner");
-    embed.addFields({
-      name: "Результаты голосования:",
-      value: scoresMsg,
-    });
-    if (!winner) {
-      embed.addFields({
-        name: "Ой, как же так...",
-        value: `Похоже, пользователи забыли проголосовать...`,
-      });
-    } else if (Array.isArray(winner)) {
+    embed.setTitle("Результаты голосования:").setDescription(scoresMsg);
+    const winnerEmbed = new EmbedBuilder().setColor(0x0099ff);
+    if (Array.isArray(winner)) {
       let text = "";
       winner.forEach((e) => {
         text += `<@${e.userId}> c кол-вом голосов: ${largestVote - 1} !\n`;
       });
-      embed.addFields({
-        name: "Ничья!",
-        value: text,
-      });
+      winnerEmbed.setTitle("Ничья!").setDescription(text);
     } else {
-      embed.addFields({
-        name: "Победитель",
-        value: `Победил <@${winner?.userId}> c ${largestVote - 1} голосов!! ${
-          state.quiplash ? bold("\n КУПЛЕШ +1000 очков") : ""
-        }`,
-      });
+      winnerEmbed
+        .setTitle("Победитель!")
+        .setDescription(
+          `Победил <@${winner?.userId}> c ${largestVote - 1} голосов!! ${
+            state.quiplash ? bold("\n КУПЛЕШ +1000 очков") : ""
+          }`
+        );
     }
 
     let text = "";
     state.gameParticipants.forEach((p) => {
       text += `<@${p.userId}> - ${p.score} очков \n`;
     });
-    embed.addFields({
-      name: "Текущее кол-во очков:",
-      value: text,
-    });
-    state.currentChannel.send({ embeds: [embed] });
+    const scoresEmbed = new EmbedBuilder()
+      .setTitle("Текущее кол-во очков:")
+      .setDescription(text);
+    state.currentChannel.send({ embeds: [embed, winnerEmbed, scoresEmbed] });
     state.quiplash = 0;
   },
 
