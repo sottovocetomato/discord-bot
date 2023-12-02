@@ -18,14 +18,15 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 2,
-  rounds: 2,
+  questionsPerRound: 1,
+  rounds: 1,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
   gameScore: [],
   gameAnswers: {},
   gameQuestions: [],
+  gameMaxQuestions: null,
   currentQuestion: 1,
   currentVoteMessage: null,
   gameInitiatorId: null,
@@ -67,6 +68,7 @@ const actions = {
     this.setCurrentGameId();
     state.gameIsRunning = true;
     state.canJoin = true;
+    state.gameMaxQuestions = state.questionsPerRound * state.rounds;
     this.readQuestions();
     state.gameParticipants.push({
       userId: interaction.user.id,
@@ -120,6 +122,7 @@ const actions = {
     const sendAnsMsg = underscore(
       "Участники, присылайте ответы мне в личные сообщения!"
     );
+
     state.currentChannel.send(
       `${roundMsg} ${pointsMsg}
       \n${questionMsg}  
@@ -221,7 +224,11 @@ const actions = {
             // console.log(`Collected ${collected.size} items`);
             // console.log(collected, `COLLECTED`);
             this.settleScores(collected);
-            state.currentChannel.send(`Скоро будет задан, следующий вопрос...`);
+            const nextMsg =
+              state.currentQuestion >= state.gameMaxQuestions
+                ? `Время подвести итоги...`
+                : `Скоро будет задан, следующий вопрос...`;
+            state.currentChannel.send(nextMsg);
             setTimeout(() => {
               if (state.gameIsRunning) {
                 this.endStage();
@@ -263,7 +270,8 @@ const actions = {
             winner = votedParticipant;
             largestVote = currVote.count;
           } else if (currVote.count === largestVote) {
-            winner = [winner].push(votedParticipant);
+            winner = [winner];
+            winner.push(votedParticipant);
           }
         } else {
           scoresMsg += `Ответ ${ans.emojiName} дан <@${votedParticipant.userId}>, он получает 0 баллов \n`;
@@ -286,7 +294,7 @@ const actions = {
     if (Array.isArray(winner)) {
       let text = "";
       winner.forEach((e) => {
-        text += `<@${e.userId}> c кол-вом голосов: ${largestVote - 1} !`;
+        text += `<@${e.userId}> c кол-вом голосов: ${largestVote - 1} !\n`;
       });
       embed.addFields({
         name: "Ничья!",
@@ -321,9 +329,6 @@ const actions = {
         state.currentQuestion >= questionsLimit &&
         state.currentRound < state.rounds
       ) {
-        state.currentChannel.send(
-          `Вопрос ${state.currentQuestion}, лимит ${questionsLimit}, раунд ${state.currentRound} из ${state.rounds} `
-        );
         state.currentQuestion++;
         state.currentRound++;
         this.startRound();
@@ -333,9 +338,6 @@ const actions = {
         state.currentQuestion >= questionsLimit &&
         state.currentRound >= state.rounds
       ) {
-        state.currentChannel.send(
-          `Вопрос ${state.currentQuestion}, лимит ${questionsLimit}, раунд ${state.currentRound} `
-        );
         this.endGame();
         return;
       }
@@ -370,7 +372,35 @@ const actions = {
         ephemeral: true,
       });
     }
-    state.currentChannel.send("Игра закончена");
+    let gameWinners = [];
+    let highestScore = null;
+
+    for (const p of state.gameParticipants) {
+      if (p.score === 0) continue;
+      if (highestScore < p.score) {
+        highestScore = p.score;
+      }
+    }
+    gameWinners = state.gameParticipants.filter(
+      (p) => p.score === highestScore
+    );
+    const winnerEmbed = new EmbedBuilder()
+      .setColor(0x0099ff)
+      .setTitle("Игра закончена!");
+
+    if (gameWinners.length === 1) {
+      winnerEmbed.addFields({
+        name: "Поздравляем победителя!",
+        value: `Им стал <@${gameWinners[0].userId}>`,
+      });
+    }
+    if (gameWinners.length > 1) {
+      winnerEmbed.addFields({
+        name: "Следующие игроки набрали одинаковое кол-во очков:",
+        value: gameWinners.map((e) => `<@${e.userId}>`).join(","),
+      });
+    }
+    state.currentChannel.send({ embeds: [winnerEmbed] });
     this.clearGameData();
   },
   clearGameData() {
