@@ -33,10 +33,10 @@ const state = {
   currentVoteMessage: null,
   gameInitiatorId: null,
   quiplash: 0,
-  waitTime: 40000,
+  waitTime: 20000,
   startGameInterval: null,
   startRoundInterval: null,
-  roundTimeout: 60000,
+  roundTimeout: 20000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -173,7 +173,7 @@ const actions = {
         clearInterval(state.startRoundInterval);
         if (!state.gameAnswers?.[state.currentQuestion]) {
           state.currentChannel.send(
-            `Никто из участников не дал ответа на вопрос :( Скоро будет задан следующий вопрос...`
+            `Никто из участников не дал ответа на вопрос :(`
           );
           setTimeout(() => {
             if (state.gameIsRunning) {
@@ -188,20 +188,38 @@ const actions = {
   },
 
   roundVote(client, interaction) {
-    let textBody = "";
+    // let textBody = "";
     state.canAnswer = false;
+    const answersEmbed = new EmbedBuilder()
+      .setTitle("Настало время для голосования зрителей!")
+      .setColor("Random")
+      .addFields({
+        name: "Ставьте реакции на понравившийся ответ!",
+        value: "\u200b",
+      });
+
     state.gameAnswers[state.currentQuestion]?.forEach((e, i, arr) => {
-      textBody += `${state.emojis[i]} - ${e.answer}\n`;
+      // textBody += `${state.emojis[i]} - ${e.answer}\n`;
       arr[i] = { ...e, emojiName: state.emojis[i] };
+      answersEmbed.addFields({
+        name: `${state.emojis[i]} - ${e.answer}`,
+        value: "\u200b",
+      });
     });
 
+    // state.currentChannel
+    //   .send(
+    //     `${blockQuote(
+    //       "\n" +
+    //         underscore(
+    //           "Настало время для голосования зрителей! Ставьте реакции на понравившийся ответ!"
+    //         ) +
+    //         "\n" +
+    //         textBody
+    //     )}`
+    //   )
     state.currentChannel
-      .send(
-        `\n${underscore(
-          "Настало время для голосования зрителей! Ставьте реакции на понравившийся ответ!"
-        )} 
-        \n${textBody}`
-      )
+      .send({ embeds: [answersEmbed] })
       .then(async (m) => {
         {
           state.currentVoteMessage = m;
@@ -234,9 +252,9 @@ const actions = {
                 });
               }
             });
-            state.currentChannel.send(
-              `Collected ${reaction.emoji.name} from ${user.tag}`
-            );
+            // state.currentChannel.send(
+            //   `Collected ${reaction.emoji.name} from ${user.tag}`
+            // );
           });
 
           collector.on("end", (collected) => {
