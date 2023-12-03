@@ -10,6 +10,9 @@ const {
   quote,
   blockQuote,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const { shuffleArray } = require("../utils/helpers");
 
@@ -33,10 +36,12 @@ const state = {
   currentVoteMessage: null,
   gameInitiatorId: null,
   quiplash: 0,
-  waitTime: 20000,
+  joinWaitTime: 40000,
+  voteTime: 15000,
   startGameInterval: null,
   startRoundInterval: null,
-  roundTimeout: 20000,
+  voteMsgInterval: null,
+  roundTimeout: 40000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -59,14 +64,23 @@ const actions = {
   },
 
   async createGame(client, interaction) {
+    const joinQlGame = new ButtonBuilder()
+      .setLabel("Участвовать")
+      .setCustomId("ql_join_game")
+      .setStyle(ButtonStyle.Primary);
+
+    const row = new ActionRowBuilder().addComponents(joinQlGame);
+
     if (state.gameIsRunning) {
       const message =
         state.gameParticipants?.length <= 8
           ? "Игра уже идёт! Набирайте /ql_join, чтобы присоединиться как участник!"
           : "Игра уже идёт! Достигнуто максимальное кол-во участников!";
-      interaction.reply(message);
+
+      await interaction.reply({ content: message, components: [row] });
       return;
     }
+
     this.setCurrentGameId();
     state.gameIsRunning = true;
     state.canJoin = true;
@@ -79,7 +93,13 @@ const actions = {
     });
     state.currentChannel = client.channels.cache.get(interaction.channelId);
     state.gameInitiatorId = interaction.user.id;
-    let timeout = state.waitTime;
+
+    await interaction.reply({
+      content: `<@${interaction.user.id}> запустил куплеш!`,
+      components: [row],
+    });
+
+    let timeout = state.joinWaitTime;
     state.startGameInterval = setInterval(async () => {
       if (!state.gameIsRunning) {
         clearInterval(state.startGameInterval);
@@ -154,7 +174,10 @@ const actions = {
           clearInterval(state.startRoundInterval);
           return;
         }
-        if (timeout === 15000) {
+        if (
+          timeout === state.roundTimeout / 2 ||
+          timeout === state.roundTimeout / 4
+        ) {
           let noAnswerFromUsers = state.gameParticipants.filter(
             (p) =>
               !state.gameAnswers[state.currentQuestion]?.find(
@@ -165,7 +188,9 @@ const actions = {
             .map((e) => `<@${e.userId}>`)
             .join(",");
           state.currentChannel.send(
-            `Осталось 15 секунд! Ждём ответов от ${noAnswerFromUsers}`
+            `Осталось ${
+              timeout / 1000
+            } секунд! Ждём ответов от ${noAnswerFromUsers}`
           );
         }
         timeout -= 1000;
@@ -195,7 +220,7 @@ const actions = {
       .setColor("Random")
       .addFields({
         name: "Ставьте реакции на понравившийся ответ!",
-        value: "\u200b",
+        value: `На голосование даётся ${state.voteTime / 1000} секунд!`,
       });
 
     state.gameAnswers[state.currentQuestion]?.forEach((e, i, arr) => {
@@ -235,8 +260,21 @@ const actions = {
           }
           const collector = m.createReactionCollector({
             filter: filter,
-            time: 10000,
+            time: state.voteTime,
           });
+
+          let voteTimer = state.voteTime;
+          state.voteMsgInterval = setInterval(() => {
+            console.log(voteTimer, "voteTimer");
+            if (voteTimer <= 0) {
+              clearInterval(state.voteMsgInterval);
+              return;
+            }
+            if (voteTimer === 10000 || voteTimer === 5000) {
+              state.currentChannel.send(`Осталось ${voteTimer / 1000} секунд!`);
+            }
+            voteTimer -= 1000;
+          }, 1000);
 
           //TODO: при необходимости оптимизировать сбор реакций здесь и в handleReaction.js
           collector.on("collect", (reaction, user) => {
@@ -261,6 +299,7 @@ const actions = {
             // console.log(`Collected ${collected.size} items`);
             // console.log(collected, `COLLECTED`);
             this.settleScores(collected);
+            clearInterval(state.voteMsgInterval);
             const nextMsg =
               state.currentQuestion >= state.gameMaxQuestions
                 ? `Время подвести итоги...`
@@ -297,10 +336,8 @@ const actions = {
         return;
       }
       state.gameAnswers[state.currentQuestion].forEach((ans) => {
-        console.log(state.gameAnswers, "state.gameAnswers");
-        console.log(ans, "ans");
         const currVote = collected.get(ans.emojiName);
-        console.log(currVote, "currVote");
+
         const votedParticipant = state.gameParticipants.find(
           (e) => e.userId == ans.userId
         );
@@ -332,7 +369,7 @@ const actions = {
   },
 
   sendScoresEmbed(embed, scoresMsg, winner, largestVote) {
-    console.log(winner, "winner");
+    // console.log(winner, "winner");
     embed.setTitle("Результаты голосования:").setDescription(scoresMsg);
     const winnerEmbed = new EmbedBuilder().setColor(0x0099ff);
     if (Array.isArray(winner)) {
@@ -357,6 +394,7 @@ const actions = {
     });
     const scoresEmbed = new EmbedBuilder()
       .setTitle("Текущее кол-во очков:")
+      .setColor(0x0099ff)
       .setDescription(text);
     state.currentChannel.send({ embeds: [embed, winnerEmbed, scoresEmbed] });
     state.quiplash = 0;
@@ -448,6 +486,7 @@ const actions = {
   },
   clearGameData() {
     clearInterval(state.startRoundInterval);
+    clearInterval(state.voteMsgInterval);
     state.currentGameId = null;
     state.currentRound = 1;
     state.questionsPerRound = 2;
@@ -489,6 +528,13 @@ const actions = {
     if (userParticipating) {
       interaction.reply({
         content: "Вы уже принимаете участие в игре!",
+        ephemeral: true,
+      });
+      return;
+    }
+    if (!state?.gameParticipants?.length == 8) {
+      interaction.reply({
+        content: "Достигнуто максимальное количество участников",
         ephemeral: true,
       });
       return;
