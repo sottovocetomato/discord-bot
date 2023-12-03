@@ -328,10 +328,12 @@ const actions = {
         return a;
       }, 0);
       if (!votesNum) {
-        scoreEmbed.addFields({
-          name: "Ой, как же так...",
-          value: `Похоже, пользователи забыли проголосовать...`,
-        });
+        scoreEmbed
+          .addFields({
+            name: "Ой, как же так...",
+            value: `Похоже, пользователи забыли проголосовать...`,
+          })
+          .setColor(0xffd966);
         state.currentChannel.send({ embeds: [scoreEmbed] });
         return;
       }
@@ -371,7 +373,7 @@ const actions = {
   sendScoresEmbed(embed, scoresMsg, winner, largestVote) {
     // console.log(winner, "winner");
     embed.setTitle("Результаты голосования:").setDescription(scoresMsg);
-    const winnerEmbed = new EmbedBuilder().setColor(0x0099ff);
+    const winnerEmbed = new EmbedBuilder().setColor(0x6aa84f);
     if (Array.isArray(winner)) {
       let text = "";
       winner.forEach((e) => {
@@ -394,7 +396,7 @@ const actions = {
     });
     const scoresEmbed = new EmbedBuilder()
       .setTitle("Текущее кол-во очков:")
-      .setColor(0x0099ff)
+      .setColor(0x999999)
       .setDescription(text);
     state.currentChannel.send({ embeds: [embed, winnerEmbed, scoresEmbed] });
     state.quiplash = 0;
