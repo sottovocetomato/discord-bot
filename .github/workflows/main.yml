@@ -21,12 +21,12 @@ jobs:
           username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
           script: |
-          cd /var/www/html/discordbot
-          pm2 stop all
-          git pull origin master
-          git status
-          npm install
-          npm run start
-          pm2 restart index.js
+            cd /var/www/html/bebek
+            pm2 stop all
+            git pull origin master
+            git status
+            npm install
+            npm run start
+            pm2 restart index.js
 
         
