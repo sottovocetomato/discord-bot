@@ -14,6 +14,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v3
+    - uses: webfactory/ssh-agent@v0.5.4
     # - name: Copy repository contents via scp
     #   uses: appleboy/scp-action@v0.1.4
     #   with:
