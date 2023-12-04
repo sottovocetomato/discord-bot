@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v2
+    # - uses: actions/checkout@v3
     # - name: Copy repository contents via scp
     #   uses: appleboy/scp-action@v0.1.4
     #   with:
@@ -33,7 +33,6 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git config --global --add safe.directory /var/www/html/discordbot
             git pull
             npm install
             npm run start
