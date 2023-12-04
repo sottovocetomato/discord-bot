@@ -14,15 +14,15 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v3
-    - name: Copy repository contents via scp
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.DEPLOY_SERVER_HOST }}
-        port: ${{ secrets.DEPLOY_SERVER_PORT }}
-        username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
-        key: ${{ secrets.DEPLOY_SERVER_KEY }}
-        source: "."
-        target: "/var/www/html/discordbot"
+    # - name: Copy repository contents via scp
+    #   uses: appleboy/scp-action@v0.1.4
+    #   with:
+    #     host: ${{ secrets.DEPLOY_SERVER_HOST }}
+    #     port: ${{ secrets.DEPLOY_SERVER_PORT }}
+    #     username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
+    #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
+    #     source: "."
+    #     target: "/var/www/html/discordbot"
     - name: Deploy using ssh
       uses: appleboy/ssh-action@v0.1.4
       with:
@@ -36,6 +36,6 @@ jobs:
             git pull
             npm install
             npm run start
-            pm2 restart /var/www/html/discordbot/index
+            pm2 restart /var/www/html/discordbot/index.js
 
         
