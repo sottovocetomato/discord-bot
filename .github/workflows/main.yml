@@ -26,6 +26,6 @@ jobs:
             git pull
             npm install
             npm run start
-            pm2 restart index.js
+            pm2 restart src/index.js
 
         
