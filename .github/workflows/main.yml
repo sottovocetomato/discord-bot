@@ -36,6 +36,6 @@ jobs:
             git pull
             npm install
             npm run start
-            pm2 restart /var/www/html/discordbot/index.js
+            pm2 restart discordbot/index
 
         
