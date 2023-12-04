@@ -36,7 +36,6 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git config --global url.ssh://git@github.com/.insteadOf https://github.com/
             git pull
             npm install
             npm run start
