@@ -2,7 +2,6 @@ require("dotenv").config();
 const eventHandler = require("./handlers/eventHandler");
 const path = require("path");
 
-// require("./register-commands");
 const { Client, IntentsBitField, Partials } = require("discord.js");
 
 const client = new Client({
