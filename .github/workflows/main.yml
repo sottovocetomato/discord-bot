@@ -15,11 +15,6 @@ jobs:
     steps:
     - name: Copy repository contents via scp
       uses: appleboy/scp-action@v0.1.4
-      env:
-        HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
-        USERNAME: ${{ secrets.DEPLOY_SERVER_USERNAME }}
-        PORT: ${{ secrets.DEPLOY_SERVER_PORT }}
-        KEY: ${{ secrets.DEPLOY_SERVER_KEY }}
       with:
         host: ${{ secrets.DEPLOY_SERVER_HOST }}
         port: ${{ secrets.DEPLOY_SERVER_PORT }}
