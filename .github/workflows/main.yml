@@ -14,13 +14,17 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - name: Copy repository contents via scp
-      uses: appleboy/scp-action@master
+      uses: appleboy/scp-action@v0.1.4
       env:
         HOST: ${{ secrets.DEPLOY_SERVER_HOST }}
         USERNAME: ${{ secrets.DEPLOY_SERVER_USERNAME }}
         PORT: ${{ secrets.DEPLOY_SERVER_PORT }}
         KEY: ${{ secrets.DEPLOY_SERVER_KEY }}
       with:
+        host: ${{ secrets.DEPLOY_SERVER_HOST }}
+        port: ${{ secrets.DEPLOY_SERVER_PORT }}
+        username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
+        key: ${{ secrets.DEPLOY_SERVER_KEY }}
         source: "."
         target: "/var/www/html/discordbot"
     - name: Deploy using ssh
