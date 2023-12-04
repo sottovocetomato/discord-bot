@@ -22,10 +22,7 @@ jobs:
     #     username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
     #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
     #     source: "."
-    #     target: "/var/www/html/discordbot"
-    - name: Setup credentials to access private repositories
-      run: git config --global url.https://${{ secrets.SECRET_PAT }}@github.com/.insteadOf https://github.com/
-        
+    #     target: "/var/www/html/discordbot"    
     - name: Deploy using ssh
       uses: appleboy/ssh-action@v0.1.4
       with:
@@ -36,7 +33,9 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
+            git config --global url.https://${{ secrets.SECRET_PAT }}@github.com/.insteadOf https://github.com/
             git pull
+            git status
             npm install
             npm run start
             pm2 restart index.js
