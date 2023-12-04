@@ -23,7 +23,11 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
+            git checkout master
+            git fetch origin
+            git checkout test
             git pull
+            git merge origin/master
             git status
             npm install
             npm run start
