@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     # - name: Copy repository contents via scp
     #   uses: appleboy/scp-action@v0.1.4
     #   with:
@@ -23,13 +23,6 @@ jobs:
     #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
     #     source: "."
     #     target: "/var/www/html/discordbot"
-    - name: Configure Git 
-      run: |
-        echo "machine github.com login $aikhsanov password ${GH_TOKEN}" > ~/.netrc
-        git config --global url."https://github.com/".insteadOf "git://github.com/"
-        git config --global advice.detachedHead false
-      env:
-        GH_TOKEN: ${{ secrets.SECRET_PAT }}
     - name: Deploy using ssh
       uses: appleboy/ssh-action@v0.1.4
       with:
