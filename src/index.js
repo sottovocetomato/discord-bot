@@ -16,5 +16,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
+console.log(process.env.TOKEN);
+
 eventHandler(client);
 client.login(process.env.TOKEN);
