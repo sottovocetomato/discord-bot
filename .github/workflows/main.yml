@@ -21,7 +21,7 @@ jobs:
           username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
           script: |
-            cd /var/www/html/bebek
+            cd /var/www/html/discordbot
             pm2 stop all
             git pull origin master
             git status
