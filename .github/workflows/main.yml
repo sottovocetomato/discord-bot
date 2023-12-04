@@ -22,7 +22,14 @@ jobs:
     #     username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
     #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
     #     source: "."
-    #     target: "/var/www/html/discordbot"    
+    #     target: "/var/www/html/discordbot"
+    - name: Configure Git 
+      run: |
+        echo "machine github.com login $aikhsanov password ${GH_TOKEN}" > ~/.netrc
+        git config --global url."https://github.com/".insteadOf "git://github.com/"
+        git config --global advice.detachedHead false
+      env:
+        GH_TOKEN: ${{ secrets.SECRET_PAT }}
     - name: Deploy using ssh
       uses: appleboy/ssh-action@v0.1.4
       with:
@@ -33,7 +40,6 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git remote set-url origin https://x-access-token:${{ secrets.SECRET_PAT }}@github.com/$GITHUB_REPOSITORY
             git pull
             git status
             npm install
