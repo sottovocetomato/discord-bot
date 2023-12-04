@@ -33,6 +33,7 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
+            git config --global --add safe.directory /var/www/html/discordbot
             git pull
             npm install
             npm run start
