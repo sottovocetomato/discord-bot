@@ -7,7 +7,7 @@ module.exports = (exceptions = []) => {
     path.join(__dirname, "..", "commands"),
     true
   );
-  // console.log(eventFolders, "eventFolders");
+
   for (const commandCategory of commandCategories) {
     const commandFiles = getAllFiles(commandCategory);
     for (const commandFile of commandFiles) {
