@@ -20,6 +20,7 @@ jobs:
           port: ${{ secrets.DEPLOY_SERVER_PORT }}
           username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
+          passphrase: ""
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
