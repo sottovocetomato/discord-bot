@@ -33,7 +33,7 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git config --global url.https://${{ secrets.SECRET_PAT }}@github.com/.insteadOf https://github.com/
+            git remote set-url origin https://x-access-token:${{ secrets.SECRET_PAT }}@github.com/$GITHUB_REPOSITORY
             git pull
             git status
             npm install
