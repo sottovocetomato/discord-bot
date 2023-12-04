@@ -23,7 +23,7 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git pull
+            git pull origin master
             npm install
             npm run start
             pm2 restart src/index.js
