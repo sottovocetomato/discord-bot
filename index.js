@@ -17,6 +17,6 @@ const client = new Client({
 });
 
 eventHandler(client);
-console.log(client, "CLIENT");
-console.log(process.env.TOKEN, "TOKEN");
+// console.log(client, "CLIENT");
+// console.log(process.env.TOKEN, "TOKEN");
 client.login(process.env.TOKEN);

@@ -7,6 +7,7 @@ module.exports = (client) => {
 
   for (const eventFolder of eventFolders) {
     const eventName = eventFolder.replace(/\\/g, "/").split("\\").pop();
+    console.log(eventName, "eventName");
     const eventFiles = getAllFiles(eventFolder);
     client.on(eventName, async (...args) => {
       for (const eventFile of eventFiles) {
