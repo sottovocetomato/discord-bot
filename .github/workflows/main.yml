@@ -23,6 +23,9 @@ jobs:
     #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
     #     source: "."
     #     target: "/var/www/html/discordbot"
+    - uses: webfactory/ssh-agent@v0.8.0
+      with:
+          ssh-private-key: ${{ secrets.DEPLOY_SERVER_KEY }}
     - name: Deploy using ssh
       uses: appleboy/ssh-action@v0.1.4
       with:
@@ -33,9 +36,10 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git pull
-            npm install
-            npm run start
-            pm2 restart index.js
+            git pull origin master
+            git status
+            # npm install
+            # npm run start
+            # pm2 restart index.js
 
         
