@@ -15,31 +15,31 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     # - name: Copy repository contents via scp
-    #   uses: appleboy/scp-action@v0.1.4
+    #   uses: appleboy/scp-action@v0.1.3
     #   with:
     #     host: ${{ secrets.DEPLOY_SERVER_HOST }}
     #     port: ${{ secrets.DEPLOY_SERVER_PORT }}
     #     username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
     #     key: ${{ secrets.DEPLOY_SERVER_KEY }}
     #     source: "."
-    #     target: "/var/www/html/discordbot"
+    #     target: "/projects/discordbot"
     - uses: webfactory/ssh-agent@v0.8.0
       with:
           ssh-private-key: ${{ secrets.DEPLOY_SERVER_KEY }}
     - name: Deploy using ssh
-      uses: appleboy/ssh-action@v0.1.4
+      uses: appleboy/ssh-action@v0.1.3
       with:
           host: ${{ secrets.DEPLOY_SERVER_HOST }}
           port: ${{ secrets.DEPLOY_SERVER_PORT }}
           username: ${{ secrets.DEPLOY_SERVER_USERNAME }}
           key: ${{ secrets.DEPLOY_SERVER_KEY }}
           script: |
-            cd /var/www/html/discordbot
+            cd projects/discordbot
             pm2 stop all
             git pull origin master
             git status
-            # npm install
-            # npm run start
-            # pm2 restart index.js
+            npm install
+            npm run start
+            pm2 restart index.js
 
         
