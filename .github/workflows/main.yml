@@ -33,10 +33,10 @@ jobs:
           script: |
             cd /var/www/html/discordbot
             pm2 stop all
-            git pull
+            git pull origin master
             git status
-            npm install
-            npm run start
-            pm2 restart index.js
+            # npm install
+            # npm run start
+            # pm2 restart index.js
 
         
