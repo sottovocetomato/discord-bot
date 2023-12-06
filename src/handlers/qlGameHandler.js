@@ -1,6 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
+const config = require("../../config.json");
+
 const {
   bold,
   italic,
@@ -602,6 +604,24 @@ const actions = {
     });
 
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
+  },
+  setGameOptions(client, interaction) {
+    if (state.gameIsRunning) {
+      interaction.reply(
+        "Невозможно изменить настройки игры, пока она запущена"
+      );
+      return;
+    }
+    console.log(interaction.options.data, "interaction.options");
+    interaction.options.data.forEach((o) => {
+      const capitalize = (w) => `${w[0].toUpperCase()}${w.slice(1)}`;
+      const optionName = o.name
+        .split("_")
+        .map((e, i) => (i > 0 ? capitalize(e) : e))
+        .join("");
+      // console.log(optionName, "optionName");
+      state[optionName] = o.value;
+    });
   },
 };
 
