@@ -3,7 +3,7 @@ require("dotenv").config({ path: "./.env" });
 const eventHandler = require("./src/handlers/eventHandler");
 
 const { Client, IntentsBitField, Partials } = require("discord.js");
-console.log(process.env, "env");
+console.log(__dirname, "__dirname");
 console.log(process.env.TOKEN, "TOKEN");
 const client = new Client({
   intents: [
