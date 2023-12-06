@@ -1,7 +1,9 @@
 const path = require("path");
 // require("dotenv").config({ path: __dirname });
 
-const result = require("dotenv").config({ path: "/projects/discord/.env" });
+const result = require("dotenv").config({
+  path: path.join(__dirname, "/", ".env"),
+});
 
 if (result.error) {
   throw result.error;
