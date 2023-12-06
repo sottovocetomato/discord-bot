@@ -9,12 +9,10 @@ if (result.error) {
   throw result.error;
 }
 
-console.log(result.parsed);
+// console.log(result.parsed);
 const eventHandler = require("./src/handlers/eventHandler");
 
 const { Client, IntentsBitField, Partials } = require("discord.js");
-// console.log(path.join(__dirname, "./", "env"), "__dirname");
-console.log(process.env.TOKEN, "TOKEN");
 const client = new Client({
   intents: [
     IntentsBitField.Flags.Guilds,
@@ -28,6 +26,4 @@ const client = new Client({
 });
 
 eventHandler(client);
-// console.log(client, "CLIENT");
-
 client.login(process.env.TOKEN);
