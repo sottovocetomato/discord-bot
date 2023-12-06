@@ -620,8 +620,34 @@ const actions = {
         .map((e, i) => (i > 0 ? capitalize(e) : e))
         .join("");
       // console.log(optionName, "optionName");
-      state[optionName] = o.value;
+      state[optionName] = optionName.toLowerCase().includes("time")
+        ? o.value * 1000
+        : o.value;
     });
+    interaction.reply({ content: "Настройки изменены", ephemeral: true });
+  },
+  checkGameOptions(client, interaction) {
+    const settingsEmbed = new EmbedBuilder()
+      .setColor(0x0099ff)
+      .setTitle("Настройки игры Куплеш")
+      .addFields({
+        name: `join_wait_time: ${state.joinWaitTime / 1000}`,
+        value: "\u200b",
+      })
+      .addFields({
+        name: `vote_time: ${state.voteTime / 1000}`,
+        value: "\u200b",
+      })
+      .addFields({
+        name: `round_timeout: ${state.roundTimeout / 1000}`,
+        value: "\u200b",
+      })
+      .addFields({
+        name: `questions_per_round: ${state.questionsPerRound}`,
+        value: "\u200b",
+      })
+      .addFields({ name: `rounds: ${state.rounds}`, value: "\u200b" });
+    interaction.reply({ embeds: [settingsEmbed], ephemeral: true });
   },
 };
 
