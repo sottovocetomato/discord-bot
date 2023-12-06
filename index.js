@@ -1,5 +1,13 @@
 const path = require("path");
-require("dotenv").config({ path: __dirname });
+// require("dotenv").config({ path: __dirname });
+require("dotenv");
+const result = dotenv.config();
+
+if (result.error) {
+  throw result.error;
+}
+
+console.log(result.parsed);
 const eventHandler = require("./src/handlers/eventHandler");
 
 const { Client, IntentsBitField, Partials } = require("discord.js");
