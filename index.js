@@ -1,7 +1,7 @@
 const path = require("path");
 // require("dotenv").config({ path: __dirname });
-require("dotenv");
-const result = dotenv.config();
+
+const result = require("dotenv").config();
 
 if (result.error) {
   throw result.error;
