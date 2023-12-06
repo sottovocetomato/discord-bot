@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const { gameData } = require("../storage/quiplash");
 
-const config = require("../../config.json");
+const { qlWinnerRoleId } = require("../../config.json");
 
 const {
   bold,
@@ -25,8 +26,8 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 2,
-  rounds: 2,
+  questionsPerRound: 1,
+  rounds: 1,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
@@ -38,12 +39,12 @@ const state = {
   currentVoteMessage: null,
   gameInitiatorId: null,
   quiplash: 0,
-  joinWaitTime: 40000,
+  joinWaitTime: 10000,
   voteTime: 15000,
   startGameInterval: null,
   startRoundInterval: null,
   voteMsgInterval: null,
-  roundTimeout: 40000,
+  roundTimeout: 10000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -83,16 +84,20 @@ const actions = {
       return;
     }
 
+    //TODO: убрать блок при переходе на бд
+    const currentWinner = interaction.guild.roles.cache
+      .get(qlWinnerRoleId)
+      .members.map((m) => m.user.id);
+    if (currentWinner.length) {
+      gameData.currentWinnerId = currentWinner[0];
+    }
+
     this.setCurrentGameId();
     state.gameIsRunning = true;
     state.canJoin = true;
     state.gameMaxQuestions = state.questionsPerRound * state.rounds;
     this.readQuestions();
-    state.gameParticipants.push({
-      userId: interaction.user.id,
-      userName: interaction.user.globalName,
-      score: 0,
-    });
+    this.addGameParticipant(interaction, true);
     state.currentChannel = client.channels.cache.get(interaction.channelId);
     state.gameInitiatorId = interaction.user.id;
 
@@ -141,10 +146,10 @@ const actions = {
       return;
     }
     this.canJoin = false;
-    this.startRound();
+    this.startRound(client, interaction);
   },
 
-  startRound() {
+  startRound(client, interaction) {
     const question = state.gameQuestions[state.currentQuestion - 1];
     const roundMsg = bold("РАУНД " + state.currentRound);
     const pointsMsg =
@@ -172,7 +177,7 @@ const actions = {
           state?.gameAnswers[state.currentQuestion]?.length ===
           state?.gameParticipants?.length
         ) {
-          this.roundVote();
+          this.roundVote(client, interaction);
           clearInterval(state.startRoundInterval);
           return;
         }
@@ -204,12 +209,12 @@ const actions = {
           );
           setTimeout(() => {
             if (state.gameIsRunning) {
-              this.endStage();
+              this.endStage(client, interaction);
             }
           }, 10000);
           return;
         }
-        this.roundVote();
+        this.roundVote(client, interaction);
       }
     }, 1000);
   },
@@ -234,17 +239,6 @@ const actions = {
       });
     });
 
-    // state.currentChannel
-    //   .send(
-    //     `${blockQuote(
-    //       "\n" +
-    //         underscore(
-    //           "Настало время для голосования зрителей! Ставьте реакции на понравившийся ответ!"
-    //         ) +
-    //         "\n" +
-    //         textBody
-    //     )}`
-    //   )
     state.currentChannel
       .send({ embeds: [answersEmbed] })
       .then(async (m) => {
@@ -309,7 +303,7 @@ const actions = {
             state.currentChannel.send(nextMsg);
             setTimeout(() => {
               if (state.gameIsRunning) {
-                this.endStage();
+                this.endStage(client, interaction);
               }
             }, 10000);
           });
@@ -404,7 +398,7 @@ const actions = {
     state.quiplash = 0;
   },
 
-  endStage() {
+  endStage(client, interaction) {
     try {
       const questionsLimit = state.questionsPerRound * state.currentRound;
 
@@ -414,20 +408,20 @@ const actions = {
       ) {
         state.currentQuestion++;
         state.currentRound++;
-        this.startRound();
+        this.startRound(client, interaction);
         return;
       }
       if (
         state.currentQuestion >= questionsLimit &&
         state.currentRound >= state.rounds
       ) {
-        this.endGame();
+        this.endGame(false, client, interaction);
         return;
       }
 
       if (state.currentQuestion < questionsLimit) {
         state.currentQuestion++;
-        this.startRound();
+        this.startRound(client, interaction);
       }
     } catch (e) {
       console.error(e);
@@ -476,6 +470,24 @@ const actions = {
         name: "Поздравляем победителя!",
         value: `Им стал <@${gameWinners[0].userId}>`,
       });
+
+      gameData.currentWinnerGamesWon =
+        gameData.currentWinnerId == gameWinners[0].userId
+          ? gameData.currentWinnerGamesWon++
+          : 1;
+
+      const role = interaction.guild.roles.cache.get(qlWinnerRoleId);
+      const hasRole = gameWinners[0]?.roles?.cache?.has(role?.id);
+      console.log(role, "ROLE");
+      console.log(hasRole, "hasRole");
+      if (role && gameData.currentWinnerGamesWon >= 1 && !hasRole) {
+        const prevWinner = interaction.guild.members.cache.get(
+          gameData.currentWinnerId
+        );
+        prevWinner?.roles?.remove(qlWinnerRoleId);
+        gameWinners[0].roles.add(qlWinnerRoleId);
+      }
+      gameData.currentWinnerId = gameWinners[0].userId;
     }
     if (gameWinners.length > 1) {
       winnerEmbed.addFields({
@@ -493,8 +505,8 @@ const actions = {
     clearInterval(state.voteMsgInterval);
     state.currentGameId = null;
     state.currentRound = 1;
-    state.questionsPerRound = 2;
-    state.rounds = 2;
+    state.questionsPerRound = 1;
+    state.rounds = 1;
     state.gameIsRunning = false;
     state.gameParticipants = [];
     state.gameAudience = [];
@@ -513,45 +525,50 @@ const actions = {
   // checkAudienceParticipant(userId) {
   //   return !!state.gameAudience.find((e) => e.userId === userId);
   // },
-  addGameParticipant(interaction) {
-    if (!state.canJoin) {
-      interaction.reply({
-        content: "Невозможно присоединиться к игре на данном этапе",
-        ephemeral: true,
-      });
-      return;
-    }
-    if (!state.gameIsRunning) {
-      interaction.reply({
-        content: "Cначала создайте игру, чтобы присоединиться к ней :)",
-        ephemeral: true,
-      });
-      return;
-    }
-    const userParticipating = this.checkGameParticipant(interaction.user.id);
-    if (userParticipating) {
-      interaction.reply({
-        content: "Вы уже принимаете участие в игре!",
-        ephemeral: true,
-      });
-      return;
-    }
-    if (!state?.gameParticipants?.length == 8) {
-      interaction.reply({
-        content: "Достигнуто максимальное количество участников",
-        ephemeral: true,
-      });
-      return;
+  addGameParticipant(interaction, init = false) {
+    if (!init) {
+      if (!state.canJoin) {
+        interaction.reply({
+          content: "Невозможно присоединиться к игре на данном этапе",
+          ephemeral: true,
+        });
+        return;
+      }
+      if (!state.gameIsRunning) {
+        interaction.reply({
+          content: "Cначала создайте игру, чтобы присоединиться к ней :)",
+          ephemeral: true,
+        });
+        return;
+      }
+      const userParticipating = this.checkGameParticipant(interaction.user.id);
+      if (userParticipating) {
+        interaction.reply({
+          content: "Вы уже принимаете участие в игре!",
+          ephemeral: true,
+        });
+        return;
+      }
+      if (!state?.gameParticipants?.length == 8) {
+        interaction.reply({
+          content: "Достигнуто максимальное количество участников",
+          ephemeral: true,
+        });
+        return;
+      }
     }
     state.gameParticipants.push({
       userId: interaction.user.id,
       userName: interaction.user.globalName,
       score: 0,
+      roles: interaction.member.roles,
     });
 
-    interaction.reply({
-      content: `<@${interaction.user.id}> присоединлся/лась к игре`,
-    });
+    if (!init) {
+      interaction.reply({
+        content: `<@${interaction.user.id}> присоединлся/лась к игре`,
+      });
+    }
   },
 
   // addAudienceParticipant(user, interaction) {
