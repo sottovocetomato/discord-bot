@@ -1,5 +1,5 @@
 const path = require("path");
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env" });
 const eventHandler = require("./src/handlers/eventHandler");
 
 const { Client, IntentsBitField, Partials } = require("discord.js");
