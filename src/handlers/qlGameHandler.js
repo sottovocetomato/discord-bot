@@ -19,7 +19,7 @@ const {
   time,
 } = require("discord.js");
 const { shuffleArray } = require("../utils/helpers");
-
+//TODO вынести настройки в отдельный файл и подгружать их
 const state = {
   canJoin: false,
   canVote: false,
