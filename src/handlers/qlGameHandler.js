@@ -54,19 +54,6 @@ const actions = {
     state.currentGameId = state.currentGameId ? state.currentGameId++ : 1;
   },
 
-  readQuestions() {
-    const file = fs.readFileSync(
-      path.join(__dirname, "..", "prompts/prompts.txt")
-    );
-
-    state.gameQuestions = file.toString().split("\n");
-
-    shuffleArray(state.gameQuestions);
-    state.gameQuestions = state.gameQuestions
-      .map((e, i) => ({ id: i, question: e.replace(/(,|;|\r)+$/gim, "") }))
-      .filter((e) => !!e);
-  },
-
   async createGame(client, interaction) {
     const joinQlGame = new ButtonBuilder()
       .setLabel("Участвовать")
@@ -529,66 +516,6 @@ const actions = {
     state.startRoundInterval = null;
     state.canJoin = false;
   },
-  checkGameParticipant(userId) {
-    return !!state.gameParticipants.find((e) => e.userId === userId);
-  },
-  // checkAudienceParticipant(userId) {
-  //   return !!state.gameAudience.find((e) => e.userId === userId);
-  // },
-  addGameParticipant(interaction, init = false) {
-    if (!init) {
-      if (!state.canJoin) {
-        interaction.reply({
-          content: "Невозможно присоединиться к игре на данном этапе",
-          ephemeral: true,
-        });
-        return;
-      }
-      if (!state.gameIsRunning) {
-        interaction.reply({
-          content: "Cначала создайте игру, чтобы присоединиться к ней :)",
-          ephemeral: true,
-        });
-        return;
-      }
-      const userParticipating = this.checkGameParticipant(interaction.user.id);
-      if (userParticipating) {
-        interaction.reply({
-          content: "Вы уже принимаете участие в игре!",
-          ephemeral: true,
-        });
-        return;
-      }
-      if (!state?.gameParticipants?.length == 8) {
-        interaction.reply({
-          content: "Достигнуто максимальное количество участников",
-          ephemeral: true,
-        });
-        return;
-      }
-    }
-    state.gameParticipants.push({
-      userId: interaction.user.id,
-      userName: interaction.user.globalName,
-      score: 0,
-      roles: interaction.member.roles,
-    });
-
-    if (!init) {
-      interaction.reply({
-        content: `<@${interaction.user.id}> присоединлся/лась к игре`,
-      });
-    }
-  },
-
-  // addAudienceParticipant(user, interaction) {
-  //   const userParticipating = this.checkAudienceParticipant(user.id);
-  //   if (userParticipating) {
-  //     interaction.reply("Вы уже принимаете участие в игре!");
-  //     return;
-  //   }
-  //   state.gameAudience.push(user.id);
-  // },
 
   checkUserReactionsVote(cachedReaction, sentReaction, user) {
     const userIsParticipant = state.gameAnswers[state.currentQuestion].find(
@@ -631,50 +558,6 @@ const actions = {
     });
 
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
-  },
-  setGameOptions(client, interaction) {
-    if (state.gameIsRunning) {
-      interaction.reply(
-        "Невозможно изменить настройки игры, пока она запущена"
-      );
-      return;
-    }
-    console.log(interaction.options.data, "interaction.options");
-    interaction.options.data.forEach((o) => {
-      const capitalize = (w) => `${w[0].toUpperCase()}${w.slice(1)}`;
-      const optionName = o.name
-        .split("_")
-        .map((e, i) => (i > 0 ? capitalize(e) : e))
-        .join("");
-      // console.log(optionName, "optionName");
-      state[optionName] = optionName.toLowerCase().includes("time")
-        ? o.value * 1000
-        : o.value;
-    });
-    interaction.reply({ content: "Настройки изменены", ephemeral: true });
-  },
-  checkGameOptions(client, interaction) {
-    const settingsEmbed = new EmbedBuilder()
-      .setColor(0x0099ff)
-      .setTitle("Настройки игры Куплеш")
-      .addFields({
-        name: `join_wait_time: ${state.joinWaitTime / 1000}`,
-        value: "\u200b",
-      })
-      .addFields({
-        name: `vote_time: ${state.voteTime / 1000}`,
-        value: "\u200b",
-      })
-      .addFields({
-        name: `round_timeout: ${state.roundTimeout / 1000}`,
-        value: "\u200b",
-      })
-      .addFields({
-        name: `questions_per_round: ${state.questionsPerRound}`,
-        value: "\u200b",
-      })
-      .addFields({ name: `rounds: ${state.rounds}`, value: "\u200b" });
-    interaction.reply({ embeds: [settingsEmbed], ephemeral: true });
   },
 };
 
