@@ -27,8 +27,8 @@ const state = {
   currentGameId: null,
   currentChannel: null,
   currentRound: 1,
-  questionsPerRound: 1,
-  rounds: 1,
+  questionsPerRound: 2,
+  rounds: 2,
   gameIsRunning: false,
   gameParticipants: [],
   gameAudience: [],
@@ -40,12 +40,12 @@ const state = {
   currentVoteMessage: null,
   gameInitiatorId: null,
   quiplash: 0,
-  joinWaitTime: 10000,
-  voteTime: 15000,
+  joinWaitTime: 40000,
+  voteTime: 35000,
   startGameInterval: null,
   startRoundInterval: null,
   voteMsgInterval: null,
-  roundTimeout: 10000,
+  roundTimeout: 40000,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -515,8 +515,8 @@ const actions = {
     clearInterval(state.voteMsgInterval);
     state.currentGameId = null;
     state.currentRound = 1;
-    state.questionsPerRound = 1;
-    state.rounds = 1;
+    state.questionsPerRound = 2;
+    state.rounds = 2;
     state.gameIsRunning = false;
     state.gameParticipants = [];
     state.gameAudience = [];
