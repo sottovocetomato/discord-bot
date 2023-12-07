@@ -16,6 +16,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  time,
 } = require("discord.js");
 const { shuffleArray } = require("../utils/helpers");
 
@@ -170,15 +171,23 @@ const actions = {
       \n${sendAnsMsg}`
     );
 
+    state.startRoundInterval = setInterval(
+      this.updateAnswersStatus(client, interaction),
+      1000
+    );
+  },
+
+  updateAnswersStatus(client, interaction) {
     let timeout = state.roundTimeout;
-    state.startRoundInterval = setInterval(() => {
+    return () => {
       if (timeout > 0) {
         if (
           state?.gameAnswers[state.currentQuestion]?.length ===
           state?.gameParticipants?.length
         ) {
-          this.roundVote(client, interaction);
           clearInterval(state.startRoundInterval);
+          state.currentChannel.send(`Все участники дали свои ответы!`);
+          setTimeout(() => this.roundVote(client, interaction), 5000);
           return;
         }
         if (
@@ -209,6 +218,7 @@ const actions = {
           );
           setTimeout(() => {
             if (state.gameIsRunning) {
+              console.log(this, "THIS");
               this.endStage(client, interaction);
             }
           }, 10000);
@@ -216,7 +226,7 @@ const actions = {
         }
         this.roundVote(client, interaction);
       }
-    }, 1000);
+    };
   },
 
   roundVote(client, interaction) {
@@ -261,7 +271,7 @@ const actions = {
 
           let voteTimer = state.voteTime;
           state.voteMsgInterval = setInterval(() => {
-            console.log(voteTimer, "voteTimer");
+            // console.log(voteTimer, "voteTimer");
             if (voteTimer <= 0) {
               clearInterval(state.voteMsgInterval);
               return;
