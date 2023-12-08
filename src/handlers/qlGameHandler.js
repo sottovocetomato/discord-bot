@@ -86,9 +86,9 @@ const actions = {
     }
 
     //TODO: убрать блок при переходе на бд
-    const currentWinner = interaction.guild.roles.cache
-      .get(qlWinnerRoleId)
-      .members.map((m) => m.user.id);
+    const currentWinner = interaction?.guild?.roles?.cache
+      ?.get(qlWinnerRoleId)
+      ?.members.map((m) => m.user.id);
     if (currentWinner.length) {
       gameData.currentWinnerId = currentWinner[0];
     }
