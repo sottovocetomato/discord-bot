@@ -117,7 +117,7 @@ const actions = {
         state.currentChannel.send("До начала игры осталось 15 секунд!");
       }
       if (timeout <= 0) {
-        if (state.gameParticipants.length < 1) {
+        if (state.gameParticipants.length < 2) {
           this.clearGameData();
           state.currentChannel.send(
             "Недостаточное количество участников для начала игры :("
@@ -488,9 +488,9 @@ const actions = {
 
       const role = interaction.guild.roles.cache.get(qlWinnerRoleId);
       const hasRole = gameWinners[0]?.roles?.cache?.has(role?.id);
-      console.log(role, "ROLE");
-      console.log(hasRole, "hasRole");
-      if (role && gameData.currentWinnerGamesWon >= 1 && !hasRole) {
+      // console.log(role, "ROLE");
+      // console.log(hasRole, "hasRole");
+      if (role && gameData.currentWinnerGamesWon >= 2 && !hasRole) {
         const prevWinner = interaction.guild.members.cache.get(
           gameData.currentWinnerId
         );
