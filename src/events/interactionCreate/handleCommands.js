@@ -1,9 +1,16 @@
-const { testServer, devs } = require("../../../config.json");
+const { testServer, devs, botChannel } = require("../../../config.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
 const getButtonActions = require("../../utils/getButtonActions");
 
 module.exports = async (client, interaction) => {
-  console.log(interaction, "INTERACTION");
+  // console.log(interaction, "INTERACTION");
+  if (interaction.channelId != botChannel) {
+    interaction.reply({
+      content: `Эта комманда работает только на канале <#${botChannel}>`,
+      ephemeral: true,
+    });
+    return;
+  }
   if (interaction.isChatInputCommand()) {
     const localCommands = getLocalCommands();
     try {
