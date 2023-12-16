@@ -1,15 +1,20 @@
-const { testServer } = require("../../../config.json");
+// const { testServer } = require("../../../config.json");
 const getLocalCommands = require("../../utils/getLocalCommands");
 const getApplicationCommands = require("../../utils/getApplicationCommands");
 const areCommandsDifferent = require("../../utils/areCommandsDifferent");
 
 module.exports = async (client) => {
+  const currGuilds = client?.guilds?.cache.map((guild) => guild.id);
+  console.log(currGuilds, "currGuilds");
+  for (const guild of currGuilds) {
+    await registerCommands(client, guild);
+  }
+};
+
+async function registerCommands(client, server) {
   try {
     const localCommands = getLocalCommands();
-    const applicationCommands = await getApplicationCommands(
-      client,
-      testServer
-    );
+    const applicationCommands = await getApplicationCommands(client, server);
     for (const localCommand of localCommands) {
       const { name, description, options = [] } = localCommand;
       console.log(options, description, "localcom");
@@ -42,4 +47,4 @@ module.exports = async (client) => {
   } catch (e) {
     console.error(`There was an error: ${e}`);
   }
-};
+}
