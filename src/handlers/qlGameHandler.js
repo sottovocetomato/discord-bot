@@ -643,7 +643,7 @@ const actions = {
       );
       return;
     }
-    console.log(interaction.options.data, "interaction.options");
+    // console.log(interaction.options.data, "interaction.options");
     const data = {};
     interaction.options.data.forEach((o) => {
       const capitalize = (w) => `${w[0].toUpperCase()}${w.slice(1)}`;
@@ -657,10 +657,10 @@ const actions = {
         : o.value;
     });
     await updateSetting({ guildId: interaction.guildId, ...data });
+    await this.loadGameSettings(interaction);
     interaction.reply({ content: "Настройки изменены", ephemeral: true });
   },
   async checkGameOptions(client, interaction) {
-    await this.loadGameSettings(interaction);
     const settingsEmbed = new EmbedBuilder()
       .setColor(0x0099ff)
       .setTitle("Настройки игры Куплеш")
