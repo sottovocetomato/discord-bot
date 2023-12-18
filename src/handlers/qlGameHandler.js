@@ -3,7 +3,11 @@ const path = require("path");
 const { gameData } = require("../storage/quiplash");
 
 const { qlWinnerRoleId } = require("../../config.json");
-
+const {
+  getSetting,
+  createSetting,
+  updateSetting,
+} = require("../storage/controllers/settings.controller");
 const {
   bold,
   italic,
@@ -72,7 +76,7 @@ const actions = {
       .setLabel("Участвовать")
       .setCustomId("ql_join_game")
       .setStyle(ButtonStyle.Primary);
-
+    await this.loadGameSettings(interaction);
     const row = new ActionRowBuilder().addComponents(joinQlGame);
 
     if (state.gameIsRunning) {
@@ -632,7 +636,7 @@ const actions = {
 
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
   },
-  setGameOptions(client, interaction) {
+  async setGameOptions(client, interaction) {
     if (state.gameIsRunning) {
       interaction.reply(
         "Невозможно изменить настройки игры, пока она запущена"
@@ -640,6 +644,7 @@ const actions = {
       return;
     }
     console.log(interaction.options.data, "interaction.options");
+    const data = {};
     interaction.options.data.forEach((o) => {
       const capitalize = (w) => `${w[0].toUpperCase()}${w.slice(1)}`;
       const optionName = o.name
@@ -647,13 +652,15 @@ const actions = {
         .map((e, i) => (i > 0 ? capitalize(e) : e))
         .join("");
       // console.log(optionName, "optionName");
-      state[optionName] = optionName.toLowerCase().includes("time")
+      data[optionName] = optionName.toLowerCase().includes("time")
         ? o.value * 1000
         : o.value;
     });
+    await updateSetting({ guildId: interaction.guildId, ...data });
     interaction.reply({ content: "Настройки изменены", ephemeral: true });
   },
-  checkGameOptions(client, interaction) {
+  async checkGameOptions(client, interaction) {
+    await this.loadGameSettings(interaction);
     const settingsEmbed = new EmbedBuilder()
       .setColor(0x0099ff)
       .setTitle("Настройки игры Куплеш")
@@ -675,6 +682,17 @@ const actions = {
       })
       .addFields({ name: `rounds: ${state.rounds}`, value: "\u200b" });
     interaction.reply({ embeds: [settingsEmbed], ephemeral: true });
+  },
+
+  async loadGameSettings(interaction) {
+    let settings = await getSetting(interaction.guildId);
+    if (!settings) {
+      settings = await createSetting({ guildId: interaction.guildId });
+    }
+    console.log(settings, "settings");
+    Object.keys(settings.dataValues).forEach((k) => {
+      state[k] = settings[k];
+    });
   },
 };
 
