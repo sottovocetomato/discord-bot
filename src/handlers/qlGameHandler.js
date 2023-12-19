@@ -484,37 +484,7 @@ const actions = {
           ? gameData.currentWinnerGamesWon++
           : 1;
 
-      const hasRole = gameWinners[0]?.roles?.cache?.has(state.qlWinnerRoleId);
-      // console.log(role, "ROLE");
-      // console.log(hasRole, "hasRole");
-
-      const currentWinner = (
-        await getCurrentWinner(interaction.guildId, interaction.user.id)
-      )?.dataValues;
-      const participant = (
-        await getParticipant(interaction.guildId, interaction.user.id)
-      )?.dataValues;
-
-      let updateData = {
-        guildId: interaction.guildId,
-        userId: interaction.user.id,
-        gamesWon: participant.gamesWon++,
-      };
-
-      if (!currentWinner && !hasRole) {
-        updateData.currentWinner = participant.gamesWon + 1 >= 1;
-      } else if (
-        currentWinner.gamesWon < participant.gamesWon + 1 &&
-        !hasRole
-      ) {
-        const prevWinner = interaction.guild.members.cache.get(
-          currentWinner.userId
-        );
-        prevWinner?.roles?.remove(state.qlWinnerRoleId);
-        gameWinners[0].roles.add(state.qlWinnerRoleId);
-      }
-
-      await updateParticipant(updateData);
+      await this.updateWinner(interaction, gameWinners);
     }
     if (gameWinners.length > 1) {
       winnerEmbed.addFields({
@@ -707,15 +677,54 @@ const actions = {
   },
 
   async checkRole(client, interaction) {
-    let role = interaction.guild.roles.cache.get("Мастер Куплеша");
+    let role = interaction.guild.roles.cache.find(
+      (r) => r.name === "Мастер Куплеша"
+    );
     if (!role) {
       role = await interaction.guild.roles.create({
         name: "Мастер Куплеша",
         color: "#32a852",
       });
+      await role.setHoist(true);
     }
-    console.log(role, "ROLE");
+
     state.qlWinnerRoleId = role.id;
+  },
+
+  async updateWinner(interaction, gameWinners) {
+    const hasRole = gameWinners[0]?.roles?.cache?.has(state.qlWinnerRoleId);
+    // console.log(role, "ROLE");
+    // console.log(hasRole, "hasRole");
+
+    const currentWinner = (
+      await getCurrentWinner(interaction.guildId, interaction.user.id)
+    )?.dataValues;
+    const participant = (
+      await getParticipant(interaction.guildId, interaction.user.id)
+    )?.dataValues;
+
+    let updateData = {
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+      gamesWon: ++participant.gamesWon,
+    };
+
+    if (!currentWinner && !hasRole) {
+      updateData.currentWinner = participant.gamesWon + 1 >= 1;
+      if (participant.gamesWon + 1 >= 1) {
+        gameWinners[0].roles.add(state.qlWinnerRoleId);
+      }
+    } else if (currentWinner.gamesWon < participant.gamesWon + 1 && !hasRole) {
+      // const role = interaction.guild.roles?.cache?.get(role);
+      // role.members.forEach((m) => m.roles?.remove(state.qlWinnerRoleId));
+      const prevWinner = interaction.guild.members.cache.get(
+        currentWinner.userId
+      );
+      prevWinner?.roles?.remove(state.qlWinnerRoleId);
+      gameWinners[0].roles.add(state.qlWinnerRoleId);
+    }
+
+    await updateParticipant(updateData);
   },
 };
 

@@ -34,6 +34,7 @@ exports.createParticipant = async (data) => {
 
 exports.updateParticipant = async (data) => {
   const { guildId, userId } = data;
+  console.log(data, "participant update");
   try {
     const participantToUpdate = await Participant.findOne({
       where: { guildId, userId },
@@ -41,9 +42,7 @@ exports.updateParticipant = async (data) => {
     if (!participantToUpdate) throw new Error("Setting is not found!");
     await participantToUpdate
       .update(data)
-      .then((participant) =>
-        console.log(participant, "setting has been updated")
-      );
+      .then((participant) => console.log("participant has been updated"));
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
   }

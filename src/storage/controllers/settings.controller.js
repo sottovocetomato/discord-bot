@@ -13,8 +13,9 @@ exports.getSetting = async (guildId) => {
 exports.createSetting = async (data) => {
   try {
     const { guildId } = data;
+    if (!guildId) throw new Error("Provide quildId");
     console.log("creating setting");
-    const setting = await GameSetting.create({ guildId });
+    const setting = await GameSetting.create(data);
     return setting;
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
@@ -23,12 +24,18 @@ exports.createSetting = async (data) => {
 
 exports.updateSetting = async (data) => {
   const { guildId } = data;
+  console.log(data, "SETTINGS DATA TO UPDATE");
   try {
     const settingToUpdate = await GameSetting.findOne({ where: { guildId } });
-    if (!settingToUpdate) throw new Error("Setting is not found!");
+    console.log(settingToUpdate, "setting to updateeeee");
+    if (!settingToUpdate) {
+      const setting = await GameSetting.create(data);
+      console.log(setting.dataValues, "creating setting in update");
+      return;
+    }
     await settingToUpdate
       .update(data)
-      .then((setting) => console.log(setting, "setting has been updated"));
+      .then((setting) => console.log("setting has been updated"));
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
   }

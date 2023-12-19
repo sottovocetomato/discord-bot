@@ -2,7 +2,7 @@ const { Sequelize, DataTypes, Model } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const GameSetting = sequelize.define("gameSetting", {
     guildId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     joinWaitTime: {
       type: DataTypes.INTEGER,
