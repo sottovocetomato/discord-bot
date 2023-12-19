@@ -2,10 +2,10 @@ const { Sequelize, DataTypes, Model } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Participant = sequelize.define("participant", {
     guildId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     gamesWon: {
       type: DataTypes.INTEGER,

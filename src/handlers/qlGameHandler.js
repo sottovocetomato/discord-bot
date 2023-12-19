@@ -484,7 +484,7 @@ const actions = {
           ? gameData.currentWinnerGamesWon++
           : 1;
 
-      await this.updateWinner(interaction, gameWinners);
+      await this.updateWinner(interaction, gameWinners[0]);
     }
     if (gameWinners.length > 1) {
       winnerEmbed.addFields({
@@ -691,28 +691,27 @@ const actions = {
     state.qlWinnerRoleId = role.id;
   },
 
-  async updateWinner(interaction, gameWinners) {
-    const hasRole = gameWinners[0]?.roles?.cache?.has(state.qlWinnerRoleId);
+  async updateWinner(interaction, gameWinner) {
+    const hasRole = gameWinner?.roles?.cache?.has(state.qlWinnerRoleId);
     // console.log(role, "ROLE");
     // console.log(hasRole, "hasRole");
 
-    const currentWinner = (
-      await getCurrentWinner(interaction.guildId, interaction.user.id)
-    )?.dataValues;
+    const currentWinner = (await getCurrentWinner(interaction.guildId))
+      ?.dataValues;
     const participant = (
-      await getParticipant(interaction.guildId, interaction.user.id)
+      await getParticipant(interaction.guildId, gameWinner.userId)
     )?.dataValues;
 
     let updateData = {
       guildId: interaction.guildId,
-      userId: interaction.user.id,
+      userId: gameWinner.userId,
       gamesWon: ++participant.gamesWon,
     };
 
     if (!currentWinner && !hasRole) {
       updateData.currentWinner = participant.gamesWon + 1 >= 1;
       if (participant.gamesWon + 1 >= 1) {
-        gameWinners[0].roles.add(state.qlWinnerRoleId);
+        gameWinner.roles.add(state.qlWinnerRoleId);
       }
     } else if (currentWinner.gamesWon < participant.gamesWon + 1 && !hasRole) {
       // const role = interaction.guild.roles?.cache?.get(role);
@@ -721,7 +720,7 @@ const actions = {
         currentWinner.userId
       );
       prevWinner?.roles?.remove(state.qlWinnerRoleId);
-      gameWinners[0].roles.add(state.qlWinnerRoleId);
+      gameWinner.roles.add(state.qlWinnerRoleId);
     }
 
     await updateParticipant(updateData);

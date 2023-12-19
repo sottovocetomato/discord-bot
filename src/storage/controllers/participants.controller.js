@@ -15,7 +15,7 @@ exports.getParticipant = async (guildId, userId) => {
 exports.getCurrentWinner = async (guildId, userId) => {
   try {
     const currentWinner = await Participant.findAll({
-      where: { guildId, userId, currentWinner: true },
+      where: { guildId, currentWinner: true },
     });
     return currentWinner;
   } catch (e) {

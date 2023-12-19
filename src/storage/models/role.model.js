@@ -3,10 +3,10 @@ const { Sequelize, DataTypes, Model } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Role = sequelize.define("role", {
     guildId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
     qlWinnerRoleId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
     },
   });
 

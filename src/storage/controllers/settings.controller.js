@@ -24,13 +24,12 @@ exports.createSetting = async (data) => {
 
 exports.updateSetting = async (data) => {
   const { guildId } = data;
-  console.log(data, "SETTINGS DATA TO UPDATE");
+
   try {
     const settingToUpdate = await GameSetting.findOne({ where: { guildId } });
-    console.log(settingToUpdate, "setting to updateeeee");
+
     if (!settingToUpdate) {
-      const setting = await GameSetting.create(data);
-      console.log(setting.dataValues, "creating setting in update");
+      await GameSetting.create(data);
       return;
     }
     await settingToUpdate
