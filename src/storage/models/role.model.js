@@ -1,13 +1,14 @@
 const { Sequelize, DataTypes, Model } = require("sequelize");
+
 module.exports = (sequelize, Sequelize) => {
-  const CurrentWinner = sequelize.define("currentWinner", {
-    current_winner_score: {
+  const Role = sequelize.define("role", {
+    guildId: {
       type: DataTypes.INTEGER,
     },
-    current_winner_games_won: {
+    qlWinnerRoleId: {
       type: DataTypes.INTEGER,
     },
   });
 
-  return CurrentWinner;
+  return Role;
 };

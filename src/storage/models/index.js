@@ -5,4 +5,5 @@ db.quiplashSettings = require("./quiplash_settings.model")(
   sequelize,
   Sequelize
 );
-db.currentWinner = require("./current_winner.model")(sequelize, Sequelize);
+db.participants = require("./participants.model")(sequelize, Sequelize);
+db.roles = require("./role.model")(sequelize, Sequelize);
