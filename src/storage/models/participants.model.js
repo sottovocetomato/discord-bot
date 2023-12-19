@@ -12,8 +12,8 @@ module.exports = (sequelize, Sequelize) => {
       defaultValue: 0,
     },
     currentWinner: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
     },
   });
 

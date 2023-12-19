@@ -12,11 +12,15 @@ exports.getParticipant = async (guildId, userId) => {
   }
 };
 
-exports.getCurrentWinner = async (guildId, userId) => {
+exports.getCurrentWinner = async (guildId) => {
   try {
-    const currentWinner = await Participant.findAll({
-      where: { guildId, currentWinner: true },
-    });
+    const currentWinner = (
+      await Participant.findOne({
+        where: { guildId, currentWinner: 1 },
+      })
+    )?.dataValues;
+
+    console.log(currentWinner, "currentWinner");
     return currentWinner;
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
