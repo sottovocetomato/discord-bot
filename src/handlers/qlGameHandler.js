@@ -698,22 +698,22 @@ const actions = {
 
     const currentWinner = await getCurrentWinner(interaction.guildId);
 
-    const participant = (
+    const { gamesWon: partGamesWon } = (
       await getParticipant(interaction.guildId, gameWinner.userId)
     )?.dataValues;
 
     let updateData = {
       guildId: interaction.guildId,
       userId: gameWinner.userId,
-      gamesWon: ++participant.gamesWon,
+      gamesWon: partGamesWon + 1,
     };
 
     if (!currentWinner && !hasRole) {
-      updateData.currentWinner = participant.gamesWon + 1 >= 1 ? 1 : 0;
-      if (participant.gamesWon + 1 >= 1) {
+      updateData.currentWinner = partGamesWon + 1 >= 3 ? 1 : 0;
+      if (partGamesWon + 1 >= 1) {
         gameWinner.roles.add(state.qlWinnerRoleId);
       }
-    } else if (currentWinner.gamesWon < participant.gamesWon + 1 && !hasRole) {
+    } else if (currentWinner.gamesWon < partGamesWon + 1 && !hasRole) {
       // const role = interaction.guild.roles?.cache?.get(role);
       // role.members.forEach((m) => m.roles?.remove(state.qlWinnerRoleId));
       const prevWinner = interaction.guild.members.cache.get(
@@ -725,7 +725,7 @@ const actions = {
 
       await updateParticipant({
         guildId: interaction.guildId,
-        userId: prevWinner.userId,
+        userId: prevWinner.user.id,
         currentWinner: 0,
       });
     }
