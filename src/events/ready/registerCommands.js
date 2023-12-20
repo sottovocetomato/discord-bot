@@ -17,7 +17,7 @@ async function registerCommands(client, server) {
     const applicationCommands = await getApplicationCommands(client, server);
     for (const localCommand of localCommands) {
       const { name, description, options = [] } = localCommand;
-      console.log(options, description, "localcom");
+      // console.log(options, description, "localcom");
       const existingCommand = await applicationCommands.cache.find(
         (cmd) => cmd.name === name
       );

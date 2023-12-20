@@ -14,7 +14,7 @@ exports.createSetting = async (data) => {
   try {
     const { guildId } = data;
     if (!guildId) throw new Error("Provide quildId");
-    console.log("creating setting");
+
     const setting = await GameSetting.create(data);
     return setting;
   } catch (e) {
@@ -32,9 +32,7 @@ exports.updateSetting = async (data) => {
       await GameSetting.create(data);
       return;
     }
-    await settingToUpdate
-      .update(data)
-      .then((setting) => console.log("setting has been updated"));
+    await settingToUpdate.update(data);
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
   }
