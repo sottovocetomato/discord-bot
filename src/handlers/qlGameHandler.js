@@ -2,7 +2,18 @@ const fs = require("fs");
 const path = require("path");
 const { gameData } = require("../storage/quiplash");
 
-const { qlWinnerRoleId } = require("../../config.json");
+const {
+  getSetting,
+  createSetting,
+  updateSetting,
+} = require("../storage/controllers/settings.controller");
+
+const {
+  getParticipant,
+  createParticipant,
+  updateParticipant,
+  getCurrentWinner,
+} = require("../storage/controllers/participants.controller");
 
 const {
   bold,
@@ -19,6 +30,7 @@ const {
   time,
 } = require("discord.js");
 const { shuffleArray } = require("../utils/helpers");
+const { getWinnerRole } = require("../storage/controllers/role.controller");
 //TODO вынести настройки в отдельный файл и подгружать их
 const state = {
   canJoin: false,
@@ -46,6 +58,7 @@ const state = {
   startRoundInterval: null,
   voteMsgInterval: null,
   roundTimeout: 40000,
+  qlWinnerRoleId: null,
   emojis: ["1️⃣", "2️⃣", "3️⃣", "4️⃣:", "5️⃣:", "6️⃣", "7️⃣", "8️⃣"],
 };
 
@@ -72,7 +85,7 @@ const actions = {
       .setLabel("Участвовать")
       .setCustomId("ql_join_game")
       .setStyle(ButtonStyle.Primary);
-
+    await this.loadGameSettings(interaction);
     const row = new ActionRowBuilder().addComponents(joinQlGame);
 
     if (state.gameIsRunning) {
@@ -84,15 +97,7 @@ const actions = {
       await interaction.reply({ content: message, components: [row] });
       return;
     }
-
-    //TODO: убрать блок при переходе на бд
-    const currentWinner = interaction?.guild?.roles?.cache
-      ?.get(qlWinnerRoleId)
-      ?.members.map((m) => m.user.id);
-    if (currentWinner.length) {
-      gameData.currentWinnerId = currentWinner[0];
-    }
-
+    await this.checkRole(client, interaction);
     this.setCurrentGameId();
     state.gameIsRunning = true;
     state.canJoin = true;
@@ -117,7 +122,7 @@ const actions = {
         state.currentChannel.send("До начала игры осталось 15 секунд!");
       }
       if (timeout <= 0) {
-        if (state.gameParticipants.length < 2) {
+        if (state.gameParticipants.length < 1) {
           this.clearGameData();
           state.currentChannel.send(
             "Недостаточное количество участников для начала игры :("
@@ -282,7 +287,6 @@ const actions = {
             voteTimer -= 1000;
           }, 1000);
 
-          //TODO: при необходимости оптимизировать сбор реакций здесь и в handleReaction.js
           collector.on("collect", (reaction, user) => {
             const userReactions = collector.collected.filter((c) =>
               c.users.cache.has(user.id)
@@ -296,14 +300,9 @@ const actions = {
                 });
               }
             });
-            // state.currentChannel.send(
-            //   `Collected ${reaction.emoji.name} from ${user.tag}`
-            // );
           });
 
           collector.on("end", (collected) => {
-            // console.log(`Collected ${collected.size} items`);
-            // console.log(collected, `COLLECTED`);
             this.settleScores(collected);
             clearInterval(state.voteMsgInterval);
             const nextMsg =
@@ -377,7 +376,6 @@ const actions = {
   },
 
   sendScoresEmbed(embed, scoresMsg, winner, largestVote) {
-    // console.log(winner, "winner");
     embed.setTitle("Результаты голосования:").setDescription(scoresMsg);
     const winnerEmbed = new EmbedBuilder().setColor(0x6aa84f);
     if (Array.isArray(winner)) {
@@ -408,7 +406,7 @@ const actions = {
     state.quiplash = 0;
   },
 
-  endStage(client, interaction) {
+  async endStage(client, interaction) {
     try {
       const questionsLimit = state.questionsPerRound * state.currentRound;
 
@@ -425,7 +423,7 @@ const actions = {
         state.currentQuestion >= questionsLimit &&
         state.currentRound >= state.rounds
       ) {
-        this.endGame(false, client, interaction);
+        await this.endGame(false, client, interaction);
         return;
       }
 
@@ -438,7 +436,7 @@ const actions = {
     }
   },
 
-  endGame(manual = false, client, interaction) {
+  async endGame(manual = false, client, interaction) {
     if (!state.gameIsRunning) {
       interaction.reply({
         content: "Сначала создайте игру :)",
@@ -486,22 +484,11 @@ const actions = {
           ? gameData.currentWinnerGamesWon++
           : 1;
 
-      const role = interaction.guild.roles.cache.get(qlWinnerRoleId);
-      const hasRole = gameWinners[0]?.roles?.cache?.has(role?.id);
-      // console.log(role, "ROLE");
-      // console.log(hasRole, "hasRole");
-      if (role && gameData.currentWinnerGamesWon >= 2 && !hasRole) {
-        const prevWinner = interaction.guild.members.cache.get(
-          gameData.currentWinnerId
-        );
-        prevWinner?.roles?.remove(qlWinnerRoleId);
-        gameWinners[0].roles.add(qlWinnerRoleId);
-      }
-      gameData.currentWinnerId = gameWinners[0].userId;
+      await this.updateWinner(interaction, gameWinners[0]);
     }
     if (gameWinners.length > 1) {
       winnerEmbed.addFields({
-        name: "Поздравляем!",
+        name: "Ничья!",
         value: `Следующие игроки набрали одинаковое кол-во очков: ${gameWinners
           .map((e) => `\n<@${e.userId}>`)
           .join(",")}`,
@@ -535,7 +522,7 @@ const actions = {
   // checkAudienceParticipant(userId) {
   //   return !!state.gameAudience.find((e) => e.userId === userId);
   // },
-  addGameParticipant(interaction, init = false) {
+  async addGameParticipant(interaction, init = false) {
     if (!init) {
       if (!state.canJoin) {
         interaction.reply({
@@ -567,12 +554,23 @@ const actions = {
         return;
       }
     }
+
     state.gameParticipants.push({
       userId: interaction.user.id,
       userName: interaction.user.globalName,
       score: 0,
       roles: interaction.member.roles,
     });
+    let participant = await getParticipant(
+      interaction.guildId,
+      interaction.user.id
+    );
+    if (!participant) {
+      participant = await createParticipant({
+        guildId: interaction.guildId,
+        userId: interaction.user.id,
+      });
+    }
 
     if (!init) {
       interaction.reply({
@@ -580,15 +578,6 @@ const actions = {
       });
     }
   },
-
-  // addAudienceParticipant(user, interaction) {
-  //   const userParticipating = this.checkAudienceParticipant(user.id);
-  //   if (userParticipating) {
-  //     interaction.reply("Вы уже принимаете участие в игре!");
-  //     return;
-  //   }
-  //   state.gameAudience.push(user.id);
-  // },
 
   checkUserReactionsVote(cachedReaction, sentReaction, user) {
     const userIsParticipant = state.gameAnswers[state.currentQuestion].find(
@@ -607,11 +596,7 @@ const actions = {
 
   setParticipantsAnswer(client, message) {
     const userIsParticipating = this.checkGameParticipant(message.author.id);
-    // console.log(state.canAnswer, "state.canAnswer");
-    // console.log(
-    //   !userIsParticipating || !state.canAnswer,
-    //   "!userIsParticipating || !state.canAnswer"
-    // );
+
     if (!userIsParticipating || !state.canAnswer) return;
     if (
       state.gameAnswers?.[state.currentQuestion]?.find(
@@ -632,28 +617,31 @@ const actions = {
 
     message.reply(`Ваш ответ принят ${message.author.globalName}`);
   },
-  setGameOptions(client, interaction) {
+  async setGameOptions(client, interaction) {
     if (state.gameIsRunning) {
       interaction.reply(
         "Невозможно изменить настройки игры, пока она запущена"
       );
       return;
     }
-    console.log(interaction.options.data, "interaction.options");
+
+    const data = {};
     interaction.options.data.forEach((o) => {
       const capitalize = (w) => `${w[0].toUpperCase()}${w.slice(1)}`;
       const optionName = o.name
         .split("_")
         .map((e, i) => (i > 0 ? capitalize(e) : e))
         .join("");
-      // console.log(optionName, "optionName");
-      state[optionName] = optionName.toLowerCase().includes("time")
+
+      data[optionName] = optionName.toLowerCase().includes("time")
         ? o.value * 1000
         : o.value;
     });
+    await updateSetting({ guildId: interaction.guildId, ...data });
+    await this.loadGameSettings(interaction);
     interaction.reply({ content: "Настройки изменены", ephemeral: true });
   },
-  checkGameOptions(client, interaction) {
+  async checkGameOptions(client, interaction) {
     const settingsEmbed = new EmbedBuilder()
       .setColor(0x0099ff)
       .setTitle("Настройки игры Куплеш")
@@ -675,6 +663,74 @@ const actions = {
       })
       .addFields({ name: `rounds: ${state.rounds}`, value: "\u200b" });
     interaction.reply({ embeds: [settingsEmbed], ephemeral: true });
+  },
+
+  async loadGameSettings(interaction) {
+    let settings = await getSetting(interaction.guildId);
+    if (!settings) {
+      settings = await createSetting({ guildId: interaction.guildId });
+    }
+    console.log(settings, "settings");
+    Object.keys(settings.dataValues).forEach((k) => {
+      state[k] = settings[k];
+    });
+  },
+
+  async checkRole(client, interaction) {
+    let role = interaction.guild.roles.cache.find(
+      (r) => r.name === "Мастер Куплеша"
+    );
+    if (!role) {
+      role = await interaction.guild.roles.create({
+        name: "Мастер Куплеша",
+        color: "#32a852",
+      });
+      await role.setHoist(true);
+    }
+
+    state.qlWinnerRoleId = role.id;
+  },
+
+  async updateWinner(interaction, gameWinner) {
+    const hasRole = gameWinner?.roles?.cache?.has(state.qlWinnerRoleId);
+    // console.log(role, "ROLE");
+    // console.log(hasRole, "hasRole");
+
+    const currentWinner = await getCurrentWinner(interaction.guildId);
+
+    const { gamesWon: partGamesWon } = (
+      await getParticipant(interaction.guildId, gameWinner.userId)
+    )?.dataValues;
+
+    let updateData = {
+      guildId: interaction.guildId,
+      userId: gameWinner.userId,
+      gamesWon: partGamesWon + 1,
+    };
+
+    if (!currentWinner && !hasRole) {
+      updateData.currentWinner = partGamesWon + 1 >= 3 ? 1 : 0;
+      if (partGamesWon + 1 >= 1) {
+        gameWinner.roles.add(state.qlWinnerRoleId);
+      }
+    } else if (currentWinner.gamesWon < partGamesWon + 1 && !hasRole) {
+      // const role = interaction.guild.roles?.cache?.get(role);
+      // role.members.forEach((m) => m.roles?.remove(state.qlWinnerRoleId));
+      const prevWinner = interaction.guild.members.cache.get(
+        currentWinner.userId
+      );
+      updateData.currentWinner = 1;
+      prevWinner?.roles?.remove(state.qlWinnerRoleId);
+      gameWinner.roles.add(state.qlWinnerRoleId);
+
+      await updateParticipant({
+        guildId: interaction.guildId,
+        userId: prevWinner.user.id,
+        currentWinner: 0,
+      });
+    }
+
+    await updateParticipant(updateData);
   },
 };
 
