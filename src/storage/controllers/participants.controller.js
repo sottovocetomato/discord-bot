@@ -20,7 +20,7 @@ exports.getCurrentWinner = async (guildId) => {
       })
     )?.dataValues;
 
-    console.log(currentWinner, "currentWinner");
+    // console.log(currentWinner, "currentWinner");
     return currentWinner;
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
@@ -38,15 +38,13 @@ exports.createParticipant = async (data) => {
 
 exports.updateParticipant = async (data) => {
   const { guildId, userId } = data;
-  console.log(data, "participant update");
+  // console.log(data, "participant update");
   try {
     const participantToUpdate = await Participant.findOne({
       where: { guildId, userId },
     });
     if (!participantToUpdate) throw new Error("Setting is not found!");
-    await participantToUpdate
-      .update(data)
-      .then((participant) => console.log("participant has been updated"));
+    await participantToUpdate.update(data);
   } catch (e) {
     console.error(`Sequilize error: ${e}`);
   }

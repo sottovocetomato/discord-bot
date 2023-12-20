@@ -223,7 +223,6 @@ const actions = {
           );
           setTimeout(() => {
             if (state.gameIsRunning) {
-              console.log(this, "THIS");
               this.endStage(client, interaction);
             }
           }, 10000);
@@ -324,7 +323,7 @@ const actions = {
   settleScores(collected) {
     try {
       const scoreEmbed = new EmbedBuilder().setColor(0x0099ff);
-      console.log(collected, "COLLECTED");
+      // console.log(collected, "COLLECTED");
       let largestVote = 1;
       let winner = null;
       let scoresMsg = "";
@@ -670,7 +669,7 @@ const actions = {
     if (!settings) {
       settings = await createSetting({ guildId: interaction.guildId });
     }
-    console.log(settings, "settings");
+    // console.log(settings, "settings");
     Object.keys(settings.dataValues).forEach((k) => {
       state[k] = settings[k];
     });
